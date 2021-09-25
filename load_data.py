@@ -1,5 +1,12 @@
 #DATA LOADING ROUTINES
 
+#download training data from the specified url
+def download_data(url):
+  filename = wget.download(url)
+  zf = ZipFile(filename, 'r')
+  zf.extractall('gdrive/MyDrive/ALIGNet')
+  zf.close()
+  
 #This class must be fine-tuned after completing the model, so as to be able to read from any h5 input formats
 class Load_HDF5(Dataset):
   # if get_all == True, file_path must specifiy a directory, if not, it should specify a file
