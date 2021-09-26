@@ -1,4 +1,13 @@
 #DATA LOADING ROUTINES
+import cv2
+import wget
+import h5py 
+import torch 
+import numpy as np
+import augment
+from torch.utils.data import Dataset, DataLoader, TensorDataset
+from zipfile import ZipFile
+
 
 #download training data from the specified url
 def download_data(url):
@@ -6,7 +15,16 @@ def download_data(url):
   zf = ZipFile(filename, 'r')
   zf.extractall('gdrive/MyDrive/ALIGNet')
   zf.close()
-  
+#load raw plane datasets
+def load_ds(path, ds_index=0):
+  ds_name = 'vase'
+  if ds_index == 1:
+    ds_name = 'plane'
+
+  tr = torch.load(path+'trainset_' + ds_name + '.pt')
+  val = torch.load(path+'valset_' + ds_name + '.pt')
+  test = torch.load(path+'testset_' + ds_name + '.pt')
+  return tr, val, test
 #This class must be fine-tuned after completing the model, so as to be able to read from any h5 input formats
 class Load_HDF5(Dataset):
   # if get_all == True, file_path must specifiy a directory, if not, it should specify a file
@@ -45,7 +63,6 @@ class Load_HDF5(Dataset):
       if self.transform:
         x = self.transform(x)
       return x
-
   def __len__(self):
     return len(self.data)
 

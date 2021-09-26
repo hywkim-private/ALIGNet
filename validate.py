@@ -1,4 +1,11 @@
 #This cell contains properties necessary for validation 
+import torch 
+import torchvision
+import numpy as np
+import augment
+import load_data
+import matplotlib
+import matplotlib.pyplot as plt
 
 #visualize the results given source, target, and target estimate images
 #save_img is the path to save the img
@@ -59,7 +66,7 @@ def validate(model, source_dl, target_dl, grid_size, visualize = False, get_loss
       visualize_results(source_image, target_image, target_estimate, save_image)
   if get_loss:
     avg_loss = sum(loss_list)/len(loss_list)
-    print(f'Average Loss: {avg_loss}')
+    print(f"Average Loss: {avg_loss}")
     return avg_loss
 
 
@@ -96,7 +103,6 @@ class overfit_checker():
       self.halt = True 
 
   def print_graph(self):
-    %matplotlib inline
     plt.plot(self.train_loss, 'bo', label='Training Loss')
     plt.plot(self.val_loss, 'r', label='Validation Loss')
     plt.title('Training and Validation Loss')

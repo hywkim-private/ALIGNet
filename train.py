@@ -1,3 +1,9 @@
+import torch 
+import numpy as np
+import validate
+import config
+from torch.utils.data import Dataset, DataLoader, TensorDataset
+
 #train the data
 #data_index 0 = vase, 1= plane
 #iter is the number of iterations
@@ -32,4 +38,4 @@ def train(model, iter, tr, val, test, model_name, train_mode = 0, overfit_checke
         tr_src = tr_src_dl_aug
 
     run_model(model, tr_src, tr_tar, GRID_SIZE, overfit_checker = overfit_checker, graph_loss=graph_loss)
-    torch.save(model_plane6.state_dict(), 'gdrive/MyDrive/ALIGNet/ALIGNet_'+model_name+'.pt')
+    torch.save(model.state_dict(), FILE_PATH+'/ALIGNet_'+model_name+'.pt')

@@ -1,4 +1,9 @@
 #CORE HELPER FUNCTIONS
+import config 
+import numpy as np
+import torch 
+import matplotlib
+import matplotlib.pyplot as pllt
 
 #initialize the differential grid
 #the parameter learn offset will define whether or not to learn the offset values during training
@@ -8,8 +13,8 @@ def init_grid(grid_size):
   delta = 2/(grid_size-1)
   np_grid = np.arange(grid_size, dtype=float)
   np_grid = np.full_like(np_grid,float(delta))
-  ts_grid_x = torch.FloatTensor(np_grid).to(DEVICE)
-  ts_grid_y = torch.FloatTensor(np_grid).to(DEVICE)
+  ts_grid_x = torch.FloatTensor(np_grid).to(config.DEVICE)
+  ts_grid_y = torch.FloatTensor(np_grid).to(config.DEVICE)
   diff_i_grid_y, diff_i_grid_x = torch.meshgrid(ts_grid_x,ts_grid_y)
   diff_grid = torch.stack([diff_i_grid_x, diff_i_grid_y])
   diff_grid = diff_grid.view(2*grid_size*grid_size)
@@ -20,7 +25,6 @@ def init_grid(grid_size):
 #return grid tensors of shape batch x 2 x grid x grid 
 def cumsum_2d(grid, grid_offset_x, grid_offset_y):
   batch_size, dim, grid_1, grid_2 = grid.shape
-
  
   Integrated_grid_x = torch.cumsum(grid[:,0], dim = 2) + grid_offset_x
   Integrated_grid_y = torch.cumsum(grid[:,1], dim = 1) + grid_offset_y

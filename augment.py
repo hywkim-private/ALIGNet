@@ -1,11 +1,17 @@
 
 #DATA AUGMENTATION ROUTINES
-
+import torch 
+import torchvision
+import numpy as np
+from imgaug import augmenters as iaa
+import torch.nn as nn
+import torch.nn.functional as F
+import skimage
 
 #functionality that creates a checkerboard mask the size of grid
 def get_checkerboard(image_size):
   cb = skimage.data.checkerboard()
-  cb = torch.FloatTensor(cb)a
+  cb = torch.FloatTensor(cb)
   cb = cb.unsqueeze(0).unsqueeze(0)
   #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
   #We will use bilinear upsampling
