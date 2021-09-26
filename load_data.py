@@ -1,19 +1,26 @@
 #DATA LOADING ROUTINES
+import config
 import cv2
 import wget
 import h5py 
 import torch 
 import numpy as np
 import augment
-from torch.utils.data import Dataset, DataLoader, TensorDataset
+from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split
+import torchvision
 from zipfile import ZipFile
+from pathlib import Path
 
 
 #download training data from the specified url
-def download_data(url):
+#datatype = 0 for vase, 1 for plane
+def download_data(url, data_type):
   filename = wget.download(url)
   zf = ZipFile(filename, 'r')
-  zf.extractall('gdrive/MyDrive/ALIGNet')
+  if data_type == 0:
+    zf.extractall(config.FILE_PATH_VASE)
+  elif data_type == 1:
+    zf.extractall(config.FILE_PATH_PLANE)
   zf.close()
 #load raw plane datasets
 def load_ds(path, ds_index=0):
@@ -59,7 +66,6 @@ class Load_HDF5(Dataset):
       x = x.astype('float32')
       #check if the loaded image matches IMAGE_SIZE
       #if not, either downsample or upsample the image
-      
       if self.transform:
         x = self.transform(x)
       return x
@@ -95,7 +101,7 @@ class Augment(Dataset):
     self.random_mask = random_mask
     
     self.batch_size = batch_size
-    self.aug = random_augmentation(transform_no)
+    self.aug = augment.random_augmentation(transform_no)
     self.augment_times = augment_times
     #first augment the original tar_list to match the returning batch size, then perform augmentation
     tar_list = []
@@ -131,10 +137,9 @@ class Augment(Dataset):
   def mask(self, aug_batch):
     tar_batch = aug_batch
     if not (self.random_mask == None):
-      aug_im = random_mask_2d(aug_batch, self.im_size, (50, 80), square=True)
+      aug_im = augment.random_mask_2d(aug_batch, self.im_size, (50, 80), square=True)
     return aug_im
-
-
+      
 
   def collate_fn(self, batch):
     #if val_set, the batch will be a single augmented batch
@@ -205,35 +210,36 @@ class pre_augment(Dataset):
 
 #load the datasets and split accordingly to the global definition
 #we split this functionality to gurantee manual augmentation of data on same randomly-split datasets
-def get_datasets(vase=True):
-  file_path = FILE_PATH_PLANE
-  if vase:
-    file_path = FILE_PATH_VASE
+def get_datasets(dataset):
+  file_path = config.FILE_PATH_PLANE_DATA
+  if dataset==config.VASE:
+    file_path = config.FILE_PATH_VASE_DATA
   #H array containing both source and target images
-  ds = Load_HDF5(file_path, get_all=True, transform=ToTensor())
+  ds = Load_HDF5(file_path, get_all=True, transform=torchvision.transforms.ToTensor())
   #split data into train, validation, test sets
-  TRAIN_SIZE = len(ds)-VAL_SIZE-TEST_SIZE
-  Trainset, Validset, Testset = random_split(ds,[TRAIN_SIZE, VAL_SIZE, TEST_SIZE])
+  TRAIN_SIZE = len(ds)-config.VAL_SIZE-config.TEST_SIZE
+  Trainset, Validset, Testset = random_split(ds,[TRAIN_SIZE, config.VAL_SIZE, config.TEST_SIZE])
   return  Trainset, Validset, Testset
 
 #given train, valid, and test sets, augment data 
 def aug_datasets(train_set, valid_set, test_set, augment=False):
   
   TRAIN_SIZE = len(train_set)
-  VALID_SIZE = len(valid_set)
+  VAL_SIZE = len(valid_set)
   TEST_SIZE = len(test_set)
-  Trainset_target, Trainset_source = random_split(train_set, [int(TRAIN_SIZE*TARGET_PROPORTION), len(train_set) - int(TRAIN_SIZE*TARGET_PROPORTION)])
-  Validset_target, Validset_source = random_split(valid_set, [int(VAL_SIZE*TARGET_PROPORTION_VAL), len(valid_set) - int(VAL_SIZE*TARGET_PROPORTION_VAL)])
-  Testset_target, Testset_source = random_split(test_set, [int(TEST_SIZE*TARGET_PROPORTION_TEST), len(test_set) - int(TEST_SIZE*TARGET_PROPORTION_TEST)])
+
+  Trainset_target, Trainset_source = random_split(train_set, [int(TRAIN_SIZE*config.TARGET_PROPORTION), len(train_set) - int(TRAIN_SIZE*config.TARGET_PROPORTION)])
+  Validset_target, Validset_source = random_split(valid_set, [int(VAL_SIZE*config.TARGET_PROPORTION_VAL), len(valid_set) - int(VAL_SIZE*config.TARGET_PROPORTION_VAL)])
+  Testset_target, Testset_source = random_split(test_set, [int(TEST_SIZE*config.TARGET_PROPORTION_TEST), len(test_set) - int(TEST_SIZE*config.TARGET_PROPORTION_TEST)])
   if augment:
     #Augment_data for targets if
-    train_tar = Augment(Trainset_target,BATCH_SIZE, 128, augment_times = AUGMENT_TIMES_TR, transform = True, random_mask = True, transform_no =2)
-    valid_tar = Augment(Validset_target, BATCH_SIZE, 128, val_set=True, augment_times = AUGMENT_TIMES_VAL, transform = True, random_mask = True, transform_no =2)
-    test_tar = Augment(Testset_target, BATCH_SIZE, 128, val_set=True, augment_times = 1, random_mask = True, transform_no =2)
+    train_tar = Augment(Trainset_target,config.BATCH_SIZE, 128, augment_times = config.AUGMENT_TIMES_TR, transform = True, random_mask = True, transform_no =2)
+    valid_tar = Augment(Validset_target, config.BATCH_SIZE, 128, val_set=True, augment_times = config.AUGMENT_TIMES_VAL, transform = True, random_mask = True, transform_no =2)
+    test_tar = Augment(Testset_target, config.BATCH_SIZE, 128, val_set=True, augment_times = 1, random_mask = True, transform_no =2)
   else:
-    train_tar = Augment(Trainset_target,BATCH_SIZE, 128, augment_times = AUGMENT_TIMES_TR, random_mask=True)
-    valid_tar = Augment(Validset_target, BATCH_SIZE, 128, val_set=True, augment_times = 1, random_mask=True)
-    test_tar = Augment(Testset_target, BATCH_SIZE, 128, val_set=True, augment_times = 1, random_mask = True)
+    train_tar = Augment(Trainset_target,config.BATCH_SIZE, 128, augment_times = config.AUGMENT_TIMES_TR, random_mask=True)
+    valid_tar = Augment(Validset_target, config.BATCH_SIZE, 128, val_set=True, augment_times = 1, random_mask=True)
+    test_tar = Augment(Testset_target, config.BATCH_SIZE, 128, val_set=True, augment_times = 1, random_mask = True)
   train_src = Expand(Trainset_source, len(train_tar))
   valid_src = Expand(Validset_source, len(valid_tar))
   test_src = Expand(Testset_source, len(test_tar))
@@ -243,9 +249,9 @@ def aug_datasets(train_set, valid_set, test_set, augment=False):
 def get_dataloader(ds, augment=False, shuffle=False):
   SHUFFLE = shuffle 
   if augment:
-    dl = DataLoader(ds, batch_size=BATCH_SIZE, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
+    dl = DataLoader(ds, batch_size=config.BATCH_SIZE, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
   else:
-    dl = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=SHUFFLE)  
+    dl = DataLoader(ds, batch_size=config.BATCH_SIZE, shuffle=SHUFFLE)  
   return dl
 
 def get_val_dl(tr, val, test):
@@ -254,8 +260,8 @@ def get_val_dl(tr, val, test):
 
   val_tar_dl_aug = get_dataloader(val_tar_ds_aug, augment=True, shuffle=True)
   val_src_dl_aug = get_dataloader(val_src_ds_aug, shuffle=True)
-  val_tar_ds_aug  = pre_augment(val_tar_dl_aug, batch_size=BATCH_SIZE, val_set=True, shuffle=True)
-  val_tar_dl_aug = DataLoader(val_tar_ds_aug, BATCH_SIZE, shuffle=True)
+  val_tar_ds_aug  = pre_augment(val_tar_dl_aug, batch_size=config.BATCH_SIZE, val_set=True, shuffle=True)
+  val_tar_dl_aug = DataLoader(val_tar_ds_aug, config.BATCH_SIZE, shuffle=True)
   val_tar_dl = get_dataloader(val_tar_ds, augment=True, shuffle=True)
   val_src_dl = get_dataloader(val_src_ds, shuffle=True)
 

@@ -23,6 +23,13 @@ def initialize_config():
     global AUGMENT_TIMES_VAL
     #parameters for the warp-field/grid
     global GRID_SIZE
+    
+    #index numbers for data types
+    global VASE
+    global PLANE
+    
+    global MODEL_PATH
+
     #path to save/load the model 
     global MODEL_PATH_VASE
     global MODEL_PATH_PLANE
@@ -31,6 +38,8 @@ def initialize_config():
     global FILE_PATH
     global FILE_PATH_VASE
     global FILE_PATH_PLANE
+    global FILE_PATH_VASE_DATA
+    global FILE_PATH_PLANE_DATA
     
     #Specify the download url
     global URL_VASE
@@ -40,6 +49,8 @@ def initialize_config():
     global TRAIN_MODE
     global GRAPH_LOSS
     global OVERFIT_CHECK
+    
+    
     #define hyper parameters 
     USE_CUDA = torch.cuda.is_available()
     DEVICE = torch.device("cuda" if USE_CUDA else "cpu")
@@ -62,20 +73,25 @@ def initialize_config():
     #parameters for the warp-field/grid
     GRID_SIZE = 8
     
+    #index numbers for data types
+    VASE = 0
+    PLANE = 1
+    
     #path to save/load the model 
-    MODEL_PATH_VASE = './'
-    MODEL_PATH_PLANE = './'
+    MODEL_PATH = './'
     
     #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
     FILE_PATH = './data/'
     FILE_PATH_VASE = './data/vase/'
     FILE_PATH_PLANE = './data/plane/'
-    
+    FILE_PATH_VASE_DATA = FILE_PATH_VASE + 'h5files/'
+    FILE_PATH_PLANE_DATA = FILE_PATH_PLANE + 'airplane_2d/'
+
     #Specify the download url
     URL_VASE = 'https://drive.google.com/uc?export=download&id=1Vv-Jz1VpI48MOVgK3Hq6ZYrs2NDP-FQ2'
     URL_PLANE = 'https://drive.google.com/uc?export=download&id=14Pnrp9ahtRbjEehkI-oM8cBMQKERg6GY'
     
     #define parameters for the training loop
-    TRAIN_MODE = 1
+    TRAIN_MODE = 0
     GRAPH_LOSS = True
     OVERFIT_CHECK = True

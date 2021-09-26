@@ -2,10 +2,13 @@
 import torch 
 import torchvision
 import numpy as np
+import config
 import augment
 import load_data
 import matplotlib
 import matplotlib.pyplot as plt
+from loss_functions import L2_Loss, L_TV_Loss
+
 
 #visualize the results given source, target, and target estimate images
 #save_img is the path to save the img
@@ -37,8 +40,8 @@ def validate(model, source_dl, target_dl, grid_size, visualize = False, get_loss
   for i in range(len(target_dl)):
     target_image = next(target_iter)
     source_image = next(source_iter)
-    target_image = torch.FloatTensor(target_image).squeeze(dim=1).to(DEVICE)
-    source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(DEVICE)
+    target_image = torch.FloatTensor(target_image).squeeze(dim=1).to(config.DEVICE)
+    source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(config.DEVICE)
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3])
     if checker_board:
@@ -89,7 +92,7 @@ class overfit_checker():
   
   #run the validate function and update the tr_val_gap parameter
   def update(self,train_loss):
-    val_loss = validate(model, self.valid_src, self.valid_tar, GRID_SIZE, get_loss = True)
+    val_loss = validate(self.model, self.valid_src, self.valid_tar, config.GRID_SIZE, get_loss = True)
     self.val_loss.append(val_loss)
     self.train_loss.append(train_loss)
     self.tr_val_gap.append(val_loss - train_loss)
