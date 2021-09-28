@@ -99,4 +99,4 @@ def initialize_config():
     TRAIN_MODE = 0
     GRAPH_LOSS = True
     RESULT_CHECK = True
-    CHECKER_BOARD = False
+    CHECKER_BOARD = True
