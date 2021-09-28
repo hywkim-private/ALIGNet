@@ -47,7 +47,7 @@ class warp_layer(nn.Module):
     x = self.upsampler(x)
     x = x.permute(0,2,3,1)
     if checker_board:
-      source_image = augment.apply_checkerboard(src_batch, IMAGE_SIZE)
+      source_image = augment.apply_checkerboard(src_batch, config.IMAGE_SIZE)
     #calculate target estimation
     x = nn.functional.grid_sample(src_batch.unsqueeze(0).permute([1,0,2,3]), x, mode='bilinear')
     return x
@@ -83,8 +83,9 @@ class conv_layer(nn.Module):
 
 #define the model class
 class ALIGNet(nn.Module):
-  def __init__(self, grid_size, checker_board=False):
+  def __init__(self, name, grid_size, checker_board=False):
     super().__init__()
+    self.name = name 
     self.conv_layer = conv_layer(grid_size)
     self.warp_layer = warp_layer(grid_size)
     self.axial_layer = axial_layer(grid_size)

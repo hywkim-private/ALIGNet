@@ -48,7 +48,10 @@ def initialize_config():
     #define parameters for the training loop
     global TRAIN_MODE
     global GRAPH_LOSS
-    global OVERFIT_CHECK
+    global RESULT_CHECK
+    
+    #etc
+    global CHECKER_BOARD
     
     
     #define hyper parameters 
@@ -95,4 +98,5 @@ def initialize_config():
     #define parameters for the training loop
     TRAIN_MODE = 0
     GRAPH_LOSS = True
-    OVERFIT_CHECK = True
+    RESULT_CHECK = True
+    CHECKER_BOARD = False

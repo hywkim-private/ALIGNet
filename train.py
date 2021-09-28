@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader, TensorDataset
 #train_mode = 0: only trains on original images
 #train_mode = 1: only trains on augmented images
 #train_mode = 2: trains both on original and augmented images
-def train(model, iter, tr, val, test, model_name, train_mode = 0, overfit_checker=None, graph_loss=False):
+def train(model, iter, tr, val, test, model_name, train_mode = 0, result_checker=None, graph_loss=False):
   for i in range(iter):
     if train_mode == 0 or train_mode == 1:
       tr_tar_ds, tr_src_ds, val_tar_ds, val_src_ds, test_tar_ds, test_src_ds = load_data.aug_datasets(tr, val, test)
@@ -38,5 +38,5 @@ def train(model, iter, tr, val, test, model_name, train_mode = 0, overfit_checke
         tr_tar = tr_tar_dl_aug
         tr_src = tr_src_dl_aug
 
-    run.run_model(model, tr_src, tr_tar, config.GRID_SIZE, overfit_checker = overfit_checker, graph_loss=graph_loss)
-    #torch.save(model.state_dict(), FILE_PATH+'/ALIGNet_'+model_name+'.pt')
+    run.run_model(model, tr_src, tr_tar, config.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
+    

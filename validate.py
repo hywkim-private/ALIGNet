@@ -5,6 +5,8 @@ import numpy as np
 import config
 import augment
 import load_data
+import etc
+import loss_functions as loss_f
 import matplotlib
 import matplotlib.pyplot as plt
 from loss_functions import L2_Loss, L_TV_Loss
@@ -50,8 +52,8 @@ def validate(model, source_dl, target_dl, grid_size, visualize = False, get_loss
     tar_est, diff_grid = model.forward(input_image, source_image)
     tar_est = tar_est.squeeze(dim=1)
     if get_loss: 
-      L2_Loss_ = L2_Loss(target_image, tar_est)
-      L_TV_Loss_ = L_TV_Loss(diff_grid, 8, 1)
+      L2_Loss_ = loss_f.L2_Loss(target_image, tar_est)
+      L_TV_Loss_ = loss_f.L_TV_Loss(diff_grid, 8, 1e-3)
       loss = L_TV_Loss_ + L2_Loss_
       loss_list.append(loss)
     source_image = source_image.to(torch.device('cpu')).detach().numpy()
@@ -69,43 +71,34 @@ def validate(model, source_dl, target_dl, grid_size, visualize = False, get_loss
       visualize_results(source_image, target_image, target_estimate, save_image)
   if get_loss:
     avg_loss = sum(loss_list)/len(loss_list)
+    avg_loss = avg_loss.item()
     print(f"Average Loss: {avg_loss}")
     return avg_loss
 
 
-#this class stores necessary in order to check and prevent overfitting of the model
-class overfit_checker():
+#this class stores necessary in order to check and validate results of the model
+class result_checker():
   def __init__(self, model, valid_tar, valid_src):
     self.model = model
     self.valid_tar = valid_tar
     self.valid_src = valid_src
     self.train_loss = []
     self.val_loss = []
-    #the difference bw train and valid set
-    self.tr_val_gap = []
-    #the differential list of tr_val_gap
-    self.tr_val_diff = []
     self.epoch = 0
     #if this flag is set to True, we will halt the operation
     self.halt = False
     self.graph = None
-  
+
   #run the validate function and update the tr_val_gap parameter
   def update(self,train_loss):
     val_loss = validate(self.model, self.valid_src, self.valid_tar, config.GRID_SIZE, get_loss = True)
     self.val_loss.append(val_loss)
     self.train_loss.append(train_loss)
-    self.tr_val_gap.append(val_loss - train_loss)
-    tr_val_diff = 0
-    if not self.epoch == 0:
-      tr_val_diff = self.tr_val_gap[len(self.val_loss)-1] - self.tr_val_gap[len(self.val_loss)-2]
-      self.tr_val_diff.append(tr_val_diff)
-    self.epoch += 1
-    if tr_val_diff > 0:
-      print('Halt flag has been raised')
-      self.halt = True 
+    self.epoch += 1 
 
-  def print_graph(self):
+ 
+  #print the graph of the current loss results->save to path if specified
+  def print_graph(self, save_path=None):
     plt.plot(self.train_loss, 'bo', label='Training Loss')
     plt.plot(self.val_loss, 'r', label='Validation Loss')
     plt.title('Training and Validation Loss')
@@ -114,3 +107,6 @@ class overfit_checker():
     plt.legend()
     plt.grid('off')
     plt.show()
+    if save_path:
+      plt.savefig(etc.latest_filename(save_path),format='png')
+    plt.close()

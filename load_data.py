@@ -28,10 +28,11 @@ def load_ds(path, ds_index=0):
   if ds_index == 1:
     ds_name = 'plane'
 
-  tr = torch.load(path+'trainset_' + ds_name + '.pt')
-  val = torch.load(path+'valset_' + ds_name + '.pt')
-  test = torch.load(path+'testset_' + ds_name + '.pt')
+  tr = torch.load(path+'tr'+ '.pt')
+  val = torch.load(path+'val'+ '.pt')
+  test = torch.load(path+'test'+ '.pt')
   return tr, val, test
+  
 #This class must be fine-tuned after completing the model, so as to be able to read from any h5 input formats
 class Load_HDF5(Dataset):
   # if get_all == True, file_path must specifiy a directory, if not, it should specify a file

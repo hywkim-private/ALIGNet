@@ -45,10 +45,8 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
       tar_est = tar_est.squeeze(dim=1)
       L2_Loss_ = L2_Loss(tar_batch, tar_est)
 
-      #L2_Loss_.retain_grad()
       L_TV_Loss_ = L_TV_Loss(diff_grid, 8, 1e-3)
-      #print(L2_Loss_)
-      #print(diff_grid)
+  
       loss = L_TV_Loss_ + L2_Loss_
       loss.backward()
       #L_TV_Loss_.backward(retain_graph=True)
@@ -57,17 +55,19 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
       loss_list.append(loss)
   return loss_list
 
-def run_model(model,source_loader, target_loader, grid_size, overfit_checker=None, graph_loss=False):
+def run_model(model,source_loader, target_loader, grid_size, result_checker=None, graph_loss=False):
   optimizer = optim.Adam(model.parameters(), lr=1e-3)
   epoch_loss = []
   for i in range(config.EPOCHS):
     loss_list = run_epoch(model, optimizer, source_loader, target_loader, grid_size)
     avg_epoch_loss = sum(loss_list) / len(loss_list)
+    avg_epoch_loss = avg_epoch_loss.item()
     print(f'Loss in Epoch {i}: {avg_epoch_loss}')
-    if not overfit_checker == None:
-      overfit_checker.update(avg_epoch_loss)
-  if (not overfit_checker == None) and graph_loss:
-    overfit_checker.print_graph()
+    if not result_checker == None:
+      result_checker.update(avg_epoch_loss)
+  if (not result_checker == None) and graph_loss:
+    print("printing graph..")
+    result_checker.print_graph(save_path = './' + model.name + '/outputs/loss_graphs/')
 
 
   

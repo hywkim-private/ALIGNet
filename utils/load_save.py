@@ -15,9 +15,9 @@ def save_ds(ds, ds_name, ds_path):
 
 
 #load the model
-def load_model(path):
-  model = ALIGNet(GRID_SIZE)
+def load_model(path, name):
+  model_ = model.ALIGNet(name, config.GRID_SIZE)
   model_l = torch.load(path)
-  model.load_state_dict(model_l)
-  return model
+  model_.load_state_dict(model_l)
+  return model_
 
