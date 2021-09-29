@@ -83,18 +83,19 @@ class conv_layer(nn.Module):
 
 #define the model class
 class ALIGNet(nn.Module):
-  def __init__(self, name, grid_size, checker_board=False):
+  def __init__(self, name, grid_size):
     super().__init__()
     self.name = name 
     self.conv_layer = conv_layer(grid_size)
     self.warp_layer = warp_layer(grid_size)
-    self.axial_layer = axial_layer(grid_size)
-    self.checker_board = checker_board
-  def forward(self, x, src_batch=None, warp=True):
+    self.axial_layer = axial_layer(grid_size)\
+  #returns a differential grid
+  def forward(self, x):
     x = self.conv_layer(x)
     x = self.axial_layer(x)
-    diff_grid = x
-    if warp:
-      x = self.warp_layer(x, src_batch, self.checker_board)
-    return x, diff_grid
+    return x
+    
+  def warp(self, diff_grid, src_batch):
+    x = self.warp_layer(diff_grid, src_batch)
+    return x
 

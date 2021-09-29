@@ -1,9 +1,10 @@
 #This cell contains properties necessary for validation 
 import torch 
+import torch.nn as nn
 import torchvision
 import numpy as np
 import config
-import augment
+import skimage
 import load_data
 import etc
 import loss_functions as loss_f
@@ -11,19 +12,40 @@ import matplotlib
 import matplotlib.pyplot as plt
 from loss_functions import L2_Loss, L_TV_Loss
 
+#functionality that creates a checkerboard mask the size of grid
+def get_checkerboard(image_size):
+  cb = skimage.data.checkerboard()
+  cb = torch.FloatTensor(cb)
+  cb = cb.unsqueeze(0).unsqueeze(0)
+  #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
+  #We will use bilinear upsampling
+  upsampler = nn.Upsample(size = [image_size, image_size], mode = 'bilinear')
+  upsampled_cb = upsampler(cb)
+  upsampled_cb = upsampled_cb.squeeze().to(config.DEVICE)
+  return upsampled_cb
+
+def apply_checkerboard(batch, imsize):
+  cb = get_checkerboard(imsize)
+  checker_batch = batch[:] * cb
+  return checker_batch
+
+
 #given source and target validation  dataloaders, perform all validation operations
 #save_img is the path to save the img
 @torch.no_grad()
-def validate(model, source_image, target_image, grid_size):
+def validate(model, source_image, target_image, grid_size, checker_board=False):
   input_image = torch.stack([source_image, target_image])
   input_image  = input_image.permute([1,0,2,3])
-  if checker_board:
-    target_image = apply_checkerboard(target_image, 128)
-    source_image = apply_checkerboard(source_image, 128)
-  tar_est, diff_grid = model.forward(input_image, source_image)
+  diff_grid = model.forward(input_image)
+  tar_est = model.warp(diff_grid, source_image)
   tar_est = tar_est.squeeze(dim=1)
   #calculate the loss for the image
   loss = get_loss(target_image, tar_est, diff_grid)
+  #apply checkerboard and run warp again if specified by checker_board
+  if checker_board:
+    source_ck = apply_checkerboard(source_image, 128)
+    tar_est_ck = model.warp(diff_grid, source_ck)
+    return tar_est_ck, diff_grid, loss
   return tar_est, diff_grid, loss
 
 #run loop for the dataloaders to run the validate() operation
@@ -42,22 +64,23 @@ def validate_dl(model, source_dl, target_dl, grid_size, checker_board=False):
     source_image = next(source_iter)
     target_image = torch.FloatTensor(target_image).squeeze(dim=1).to(config.DEVICE)
     source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(config.DEVICE)
-    target_image = apply_checkerboard(target_image, 128)
-    source_image = apply_checkerboard(source_image, 128)
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3])
-    tar_est, diff_grid, loss = validate(model, source_image, target_image, grid_size)
+    tar_est, diff_grid, loss = validate(model, source_image, target_image, grid_size, checker_board)
+    if checker_board:
+      target_image = apply_checkerboard(target_image, 128)
+      source_image = apply_checkerboard(source_image, 128)
     target_list.append(target_image)
     source_list.append(source_image)
-    est_list.append(target_est)
+    est_list.append(tar_est)
     grid_list.append(diff_grid)
     loss_list.append(loss)
-    avg_loss = avg_loss(loss_list)
-  return target_list, source_list, est_list, grid_list, avg_loss
+  avg_loss_ = avg_loss(loss_list)
+  return target_list, source_list, est_list, grid_list, avg_loss_
   
 def get_loss(tar_img, tar_est, diff_grid):
-    L2_Loss_ = loss_f.L2_Loss(tar_img, tar_est)
-    L_TV_Loss_ = loss_f.L_TV_Loss(diff_grid, 8, 1e-3)
+    L2_Loss_ = L2_Loss(tar_img, tar_est)
+    L_TV_Loss_ = L_TV_Loss(diff_grid, 8, 1e-3)
     loss = L_TV_Loss_ + L2_Loss_
     return loss
     
@@ -93,7 +116,7 @@ def visualize_results(source_image,  target_image, target_estimate, save_path=No
     ax[i,1].imshow(target_image[i], cmap='gray')
     #ax[i,2].set_title('target_estimate')
     ax[i,2].imshow(target_estimate[i], cmap='gray')
-  if save_path
+  if save_path:
     plt.savefig(save_path, format='png')
   return
  
@@ -112,19 +135,24 @@ class result_checker():
     self.halt = False
     self.graph = None
     self.checker_board = checker_board 
-  
+    self.avg_loss = 0
   
   #run the validate function and update the tr_val_gap parameter
   #include a train loss if youre validating for a training loop
   def update(self,train_loss=None):
     tar_list, src_list, est_list, grid_list, avg_loss = validate_dl(self.model, self.valid_src, self.valid_tar, config.GRID_SIZE, checker_board=self.checker_board)
+    self.avg_loss = avg_loss
     self.tar_list = tar_list
     self.src_list = src_list
     self.est_list = est_list
-    self.grid_list = grid_lilst
+    self.grid_list = grid_list
     self.val_loss.append(avg_loss)
     self.train_loss.append(train_loss)
     self.epoch += 1 
+  
+  #visualize the results in images 
+  def visualize(self, save_path):
+    print_image(self.tar_list, self.src_list, self.est_list, save_path=save_path)
   
  #update the loss value after running the model
   #print the graph of the current loss results->save to path if specified
@@ -142,4 +170,18 @@ class result_checker():
     plt.close()
     
 
+    
+#a function that creates result checker and runs validation 
+def run_validation(model, source_loader, target_loader, grid_size, save_path, get_loss=True, visualize=True, checker_board=True):
+  #create a result checker object
+  result = result_checker(model, target_loader, source_loader, checker_board)
+  #run and update the parameters in the result checker object
+  result.update()
+  if visualize:
+    print(f"printing image results to {save_path}")
+    result.visualize(save_path)
+  if get_loss:
+    print(f"The average loss of validation set is: {result.avg_loss}")
+    
+    
     

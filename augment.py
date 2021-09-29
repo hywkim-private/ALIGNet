@@ -8,22 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import skimage
 
-#functionality that creates a checkerboard mask the size of grid
-def get_checkerboard(image_size):
-  cb = skimage.data.checkerboard()
-  cb = torch.FloatTensor(cb)
-  cb = cb.unsqueeze(0).unsqueeze(0)
-  #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
-  #We will use bilinear upsampling
-  upsampler = nn.Upsample(size = [image_size, image_size], mode = 'bilinear')
-  upsampled_cb = upsampler(cb)
-  upsampled_cb = upsampled_cb.squeeze().to(DEVICE)
-  return upsampled_cb
-
-def apply_checkerboard(batch, imsize):
-  cb = get_checkerboard(imsize)
-  checker_batch = batch[:] * cb
-  return checker_batch
 
 #return target image as masked by random size and locations
 #mask_size can either be integer or tuple, specifying the range of random mask sizes

@@ -1,6 +1,7 @@
 import config
 import model
 import validate
+import etc
 import train as train_
 import load_data
 import load_save
@@ -49,18 +50,18 @@ if __name__ == '__main__':
   new.add_argument("-f", "--filepath", type=str,  help="Specify the filepath to create newmodel")
   new.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the new model")
   new.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
-  new.add_argument("-i", "--iter", type=str, help="number of times to run the training loop, default: 10") 
+  new.add_argument("-i", "--iter", type=int, help="number of times to run the training loop, default: 10") 
   
   #download and save new dataset
   data.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
   
   #train a model previously created
   train.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
-  train.add_argument("-i", "--iter", type=str, help="number of times to run the training loop, default: 10")
+  train.add_argument("-i", "--iter", type=int, help="number of times to run the training loop, default: 10")
   train.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the model")
   
   #validate the model using the valid dataset
-  valid.add_argument("--ty", "--type", required=True, type=str, help="Specify the dataset to use for the new model")
+  valid.add_argument("-ty", "--type", required=True, type=str, help="Specify the dataset to use for the new model")
   valid.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the model")
   valid.add_argument("-v", "--visualize", type=str, help='Specify whether or not to visualize the results')
   
@@ -102,7 +103,7 @@ if __name__ == '__main__':
       exit()
     save_path = config.FILE_PATH + args.name
     #make new  model
-    model = model.ALIGNet(args.name, config.GRID_SIZE, config.CHECKER_BOARD).to(config.DEVICE)
+    model = model.ALIGNet(args.name, config.GRID_SIZE).to(config.DEVICE)
     
     #make a directory to save model and dataset
     if not os.path.exists(config.MODEL_PATH + args.name):
@@ -124,14 +125,6 @@ if __name__ == '__main__':
     exit()
     
   if args.command == 'train':
-    #first check if the dataset exists
-    if not os.path.exists(config.FILE_PATH + args.type + '/'):
-      print("Dataset not found: create dataset using [data] argument")
-      exit()
-    #check if the dataset exists
-    if not os.path.exists(config.MODEL_PATH + args.name + '/'):
-      print("Model not found: create model using [new] argument")
-      exit()
     #load the previous model
     model_path = './' + args.name + '/' + args.name + '.pt'
     model = load_save.load_model(model_path, args.name).to(config.DEVICE)
@@ -143,11 +136,14 @@ if __name__ == '__main__':
     #load the previous model
     model_path = './' + args.name + '/' + args.name + '.pt'
     model = load_save.load_model(model_path, args.name).to(config.DEVICE)
+    #path to save the visualized image 
+    image_path = './' + args.name + '/outputs/images/'
+    image_path = etc.latest_filename(image_path)
     vis=True if args.visualize else False
     #load the neccessary datasets
     tr, val, test = load_ds()
-    val_tar_dl, val_src_dl, val_tar_dl_aug, val_src_dl_aug = get_val_dl(tr, val, test)
-    validate(model, val_src_dl, val_tar_dl, config.GRID_SIZE, visualize=vis, get_loss=True, save_image=True, checker_board=config.CHECKER_BOARD)
+    val_tar_dl, val_src_dl, val_tar_dl_aug, val_src_dl_aug = load_data.get_val_dl(tr, val, test)
+    validate.run_validation(model, val_src_dl, val_tar_dl, config.GRID_SIZE, image_path)
     
     
       

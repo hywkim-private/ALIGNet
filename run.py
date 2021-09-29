@@ -41,7 +41,8 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
       input_image  = input_image.permute([1,0,2,3])
 
       #run the network
-      tar_est, diff_grid = model.forward(input_image, src_batch)
+      diff_grid = model.forward(input_image)
+      tar_est = model.warp(diff_grid, src_batch)
       tar_est = tar_est.squeeze(dim=1)
       L2_Loss_ = L2_Loss(tar_batch, tar_est)
 
@@ -65,6 +66,7 @@ def run_model(model,source_loader, target_loader, grid_size, result_checker=None
     print(f'Loss in Epoch {i}: {avg_epoch_loss}')
     if not result_checker == None:
       result_checker.update(avg_epoch_loss)
+      print(f'Validation Loss in Epoch {i}: {result_checker.avg_loss}')
   if (not result_checker == None) and graph_loss:
     print("printing graph..")
     result_checker.print_graph(save_path = './' + model.name + '/outputs/loss_graphs/')
