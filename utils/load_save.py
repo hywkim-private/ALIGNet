@@ -1,6 +1,7 @@
 import config
 import torch 
 import model
+import pickle 
 
 def save_model(checkpoint, checkpoint_path):
   path = checkpoint_path + '/checkpoint.pt'
@@ -21,3 +22,14 @@ def load_model(path, name):
   model_.load_state_dict(model_l)
   return model_
 
+
+#a function to save objects--namely the result_checker
+def save_obj(obj, save_path):
+  file_pi = open(save_path + '.obj', 'wb') 
+  pickle.dump(obj, file_pi)
+
+#a function to load objects
+def load_obj(load_path):
+  filehandler = open(load_path, 'rb') 
+  obj = pickle.load(filehandler)
+  return obj

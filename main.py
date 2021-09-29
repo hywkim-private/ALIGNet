@@ -30,12 +30,17 @@ if __name__ == '__main__':
       iter = args.iter
     #make an overfit check if specified by config 
     result_check = None 
+    result_check_path = config.MODEL_PATH + args.name +'/result_checker'
     if config.RESULT_CHECK:
        #make the valid dataset
       val_tar, val_src, val_tar_aug, val_src_aug = load_data.get_val_dl(tr, val, test)
-      result_check = validate.result_checker(model, val_tar, val_src)
+      if os.path.exists(result_check_path): 
+        obj = load_obj(result_check_path)
+      else:
+        result_check = validate.result_checker(model, val_tar, val_src)
     train_.train(model, iter, tr, val, test, args.name, result_checker=result_check, train_mode=config.TRAIN_MODE, graph_loss=config.GRAPH_LOSS)
     torch.save(model.state_dict(), config.MODEL_PATH + args.name +'/'+ args.name+'.pt')
+    load_save.save_obj(result_check, result_check_path)
     
   config.initialize_config()
   #argument parser

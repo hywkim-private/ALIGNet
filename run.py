@@ -5,7 +5,7 @@ import torch.optim as optim
 import model
 import validate
 import grid_helper
-from loss_functions import L2_Loss, L_TV_Loss
+from loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
 
   
 #run the model for a single epoch
@@ -39,18 +39,12 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
       src_batch = torch.tensor(src_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config.DEVICE)
       input_image = torch.stack([src_batch, aug_batch])
       input_image  = input_image.permute([1,0,2,3])
-
       #run the network
       diff_grid = model.forward(input_image)
       tar_est = model.warp(diff_grid, src_batch)
       tar_est = tar_est.squeeze(dim=1)
-      L2_Loss_ = L2_Loss(tar_batch, tar_est)
-
-      L_TV_Loss_ = L_TV_Loss(diff_grid, 8, 1e-3)
-  
-      loss = L_TV_Loss_ + L2_Loss_
+      loss = get_loss(tar_batch, tar_est, diff_grid)
       loss.backward()
-      #L_TV_Loss_.backward(retain_graph=True)
       optimizer.step()
       optimizer.zero_grad()
       loss_list.append(loss)
@@ -61,14 +55,13 @@ def run_model(model,source_loader, target_loader, grid_size, result_checker=None
   epoch_loss = []
   for i in range(config.EPOCHS):
     loss_list = run_epoch(model, optimizer, source_loader, target_loader, grid_size)
-    avg_epoch_loss = sum(loss_list) / len(loss_list)
-    avg_epoch_loss = avg_epoch_loss.item()
+    avg_epoch_loss = avg_loss(loss_list)
     print(f'Loss in Epoch {i}: {avg_epoch_loss}')
     if not result_checker == None:
       result_checker.update(avg_epoch_loss)
       print(f'Validation Loss in Epoch {i}: {result_checker.avg_loss}')
   if (not result_checker == None) and graph_loss:
-    print("printing graph..")
+    print("Printing graph..")
     result_checker.print_graph(save_path = './' + model.name + '/outputs/loss_graphs/')
 
 

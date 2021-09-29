@@ -10,7 +10,7 @@ import etc
 import loss_functions as loss_f
 import matplotlib
 import matplotlib.pyplot as plt
-from loss_functions import L2_Loss, L_TV_Loss
+from loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
 
 #functionality that creates a checkerboard mask the size of grid
 def get_checkerboard(image_size):
@@ -78,18 +78,7 @@ def validate_dl(model, source_dl, target_dl, grid_size, checker_board=False):
   avg_loss_ = avg_loss(loss_list)
   return target_list, source_list, est_list, grid_list, avg_loss_
   
-def get_loss(tar_img, tar_est, diff_grid):
-    L2_Loss_ = L2_Loss(tar_img, tar_est)
-    L_TV_Loss_ = L_TV_Loss(diff_grid, 8, 1e-3)
-    loss = L_TV_Loss_ + L2_Loss_
-    return loss
-    
-#get an average loss of all the elements in the loss_list 
-def avg_loss(loss_list):
-  avg_loss = sum(loss_list)/len(loss_list)
-  avg_loss = avg_loss.item()
-  return avg_loss
-  
+
 
 #print the visual results of the validation run
 def print_image(tar_list, src_list, est_list, save_path=None):
