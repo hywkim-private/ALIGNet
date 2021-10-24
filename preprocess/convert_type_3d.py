@@ -2,14 +2,15 @@ import torch
 from pathlib import Path
 import pytorch3d as p3d
 from torch.utils.data import random_split
-from pytorch3d import ops, structures
-from preprocess import voxellize, io_3d, augment_3d
+from pytorch3d import structures
+from pytorch3d.ops import sample_points_from_meshes
+from . import voxellize, io_3d, augment_3d
 
 #given dataset of meshes, sample data into pointclouds
 #if mesh is False, we are using the pointcloud 
-def PointCloud(mesh, num_samples):
-  samples = ops.sample_points_from_meshes(mesh, num_samples=num_samples)
-  features=torch.zeros(len(samples), num_samples, 5).to(DEVICE)
+def PointCloud(mesh, num_samples, device):
+  samples = sample_points_from_meshes(mesh, num_samples=num_samples)
+  features=torch.zeros(len(samples), num_samples, 5).to(device)
   cloud = structures.Pointclouds(samples, features=features)
   #the points in the form of (minibatch, 3)
   points = torch.stack(cloud.points_list(), axis=0)
@@ -29,13 +30,14 @@ def Voxel(pointcloud, voxel_num):
 #load the mesh from a given location, save both the pointcloud and voxel representation of the model
 class Compound_Data():
   #load the mesh data
-  def __init__(self, filepath, sample_index=None):
-    mesh = Load_Mesh(filepath, sample_index).to(DEVICE)
+  def __init__(self, filepath, device, sample_index=None):
+    mesh = Load_Mesh(filepath, sample_index).to(device)
     self.mesh = mesh
     self.pointcloud = None
     self.voxel = None
+    self.device = device
   def get_pointcloud(self, num_samples):
-    self.pointcloud = PointCloud(self.mesh, num_samples)
+    self.pointcloud = PointCloud(self.mesh, num_samples, self.device)
   def get_voxel(self, voxel_num):
     if not self.pointcloud == None:
       self.voxel = Voxel(self.pointcloud, voxel_num)

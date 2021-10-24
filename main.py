@@ -1,10 +1,10 @@
 import argparse
 import os
 import torch 
+from model import io_3d
 
 import run_3d, config_3d, model, preprocess, test
-import config_3d
-
+from model import io_3d, ops_3d, network_3d
 
 if __name__ == '__main__':
   #common code snippet--load data as specified
@@ -13,7 +13,7 @@ if __name__ == '__main__':
     if args.type == 'plane ':
       d_type = config.PLANE
     #load datasets
-    tr, val, test = load_data.load_ds(config.FILE_PATH + args.type + '/datasets/', d_type)
+    tr, val, test = io_3d.load_ds(os.path.join(config_3d.MODEL_PATH,args.name, args.type,'/datasets/'), d_type)
     return tr, val, test
     
   #common code snippet--run the train iteration loop
@@ -79,26 +79,34 @@ if __name__ == '__main__':
         os.makedirs(path)
       
         
-    preprocess.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
-    tr, val, test = preprocess.io_3d.get_datasets(d_type)
+    model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
+    tr, val, test = model.io_3d.get_datasets(d_type)
     
     #save datasets to the same directory as the model
-    preprocess.io_3d.save_ds(tr, 'tr', path )
-    preprocess.io_3d.save_ds(val, 'val', path )
-    preprocess.io_3d.save_ds(test, 'test', path )
+    model.io_3d.save_ds(tr, 'tr', path )
+    model.io_3d.save_ds(val, 'val', path )
+    model.io_3d.save_ds(test, 'test', path )
     
+
+  #check the type of data (for now, we will only support plane--add more)
+  if args.type == 'plane':
+    data_path = config_3d.DATA_PATH_PLANE
+    data_index = 0
+  #get the path to the target model
+  model_path = config_3d.MODEL_PATH + args.name + '/'
+  model_obj_path = model_path + args.name + '.pt'
 
     
   #if new model, download and create dataset, make new model
   if args.command == 'new':
     #first check if the dataset exists
-    if not os.path.exists(confi_3d.DATA_PATH + args.type + '/'):
-      print("Dataset not found: create dataset using [data] argument")
+    if not os.path.exists(data_path):
+      print(f"Dataset not found in path {data_path}: create dataset using [data] argument")
       exit()
     save_path = config_3d.DATA_PATH + args.name
     #make new  model
-    init_grid = ops_3d.init_grid_3d(grid_size).view(-1).to(config_3d.DEVICE)
-    model = model.network_3d.ALIGNet_3d(args.name, config_3d.GRID_SIZE, init_grid).to(config_3d.DEVICE)
+    init_grid = ops_3d.init_grid_3d(config_3d.GRID_SIZE).view(-1).to(config_3d.DEVICE)
+    model = network_3d.ALIGNet_3d(args.name, config_3d.GRID_SIZE, config_3d.VOX_SIZE, init_grid).to(config_3d.DEVICE)
     
     #make a directory to save model and dataset
     if not os.path.exists(config_3d.MODEL_PATH + args.name):
@@ -110,21 +118,14 @@ if __name__ == '__main__':
     train_model()
     
     
-  #check the type of data (for now, we will only support plane--add more)
-  if args.type == 'plane':
-    data_path = config_3d.DATA_PATH_PLANE
-    data_index = 0
-  #get the path to the target model
-  model_path = config_3d.MODEL_PATH + args.name + '/'
-  model_obj_path = model_path + args.name + '.pt'
-  
+  #we will check the initialized directories to verify that models/datasets are initialized
   #the commands below (valid and train) both need to be checked if the model exists or not -- error if  not 
   if not os.path.exists(data_path):
-    print("Dataset not found: create dataset using [data] argument")
+    print(f"Dataset not found in path {data_path}: create dataset using [data] argument")
     exit()
   #check if the dataset exists
   if not os.path.exists(model_path):
-    print("Model not found: create model using [new] argument")
+    print(f"Model not found in path {model_path}: create model using [new] argument")
     exit()
     
   if args.command == 'train':

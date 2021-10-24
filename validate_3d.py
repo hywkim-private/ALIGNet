@@ -3,15 +3,10 @@ import torch
 import torch.nn as nn
 import torchvision
 import numpy as np
-#import config
 import skimage
-#import load_data
-#import etc
-#import loss_functions as loss_f
 import matplotlib
 import matplotlib.pyplot as plt
 from pytorch3d import ops
-#from loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
 from preprocess import convert_type_3d as conv
 from model import loss_3d
 

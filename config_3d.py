@@ -1,5 +1,6 @@
 #DEFINE global variables 
 import torch
+import os
 
 def initialize_config():
         #define hyper parameters 
@@ -35,15 +36,14 @@ def initialize_config():
     global MODEL_PATH_PLANE
     
     #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
-    global FILE_PATH
-    global FILE_PATH_VASE
-    global FILE_PATH_PLANE
-    global FILE_PATH_VASE_DATA
-    global FILE_PATH_PLANE_DATA
+    global DATA_PATH
+    global DATA_PATH_PLANE
+
+
     
     #Specify the download url
-    global URL_VASE
-    global URL_PLANE
+    global URL_DATA
+
     
     #define parameters for the training loop
     global TRAIN_MODE
@@ -83,7 +83,7 @@ def initialize_config():
     
     #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
     DATA_PATH = './data/'
-    DATA_PATH_PLANE = DATA_PATH + 'train/02691156/'
+    DATA_PATH_PLANE = os.path.join(DATA_PATH,'train/02691156/')
 
     #Specify the download url
     URL_DATA = 'http://shapenet.cs.stanford.edu/shapenet/obj-zip/SHREC16/train.zip'
