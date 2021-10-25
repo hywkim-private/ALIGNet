@@ -1,9 +1,11 @@
 import torch 
 import pickle 
+import os
 from pathlib import Path
 from pytorch3d import io
-from ALIGNet_3d import config_3d
+from zipfile import ZipFile
 from model import network_3d
+import wget
 
 #a function that parses through the file and returns the filename of the highest index number
 def latest_filename(file_path):
@@ -23,8 +25,10 @@ def latest_filename(file_path):
     
 
 #download and extract zip_file data
-def download_zip(url, extract_path)
+def download_zip(url, extract_path):
   filename = wget.download(url)
+  if os.path.exists(result_check_path): 
+    obj = preprocess.io_3d.load_obj(result_check_path)
   zf = ZipFile(filename, 'r')
   zf.extractall(extract_path)
   zf.close()

@@ -11,9 +11,9 @@ def init_grid_3d(grid_size):
   delta = 2/(grid_size-1)
   np_grid = np.arange(grid_size, dtype=float)
   np_grid = np.full_like(np_grid,float(delta))
-  ts_grid_x = torch.FloatTensor(np_grid).to(DEVICE)
-  ts_grid_y = torch.FloatTensor(np_grid).to(DEVICE)
-  ts_grid_z = torch.FloatTensor(np_grid).to(DEVICE)
+  ts_grid_x = torch.FloatTensor(np_grid)
+  ts_grid_y = torch.FloatTensor(np_grid)
+  ts_grid_z = torch.FloatTensor(np_grid)
 
   diff_i_grid_x, diff_i_grid_y, diff_i_grid_z = torch.meshgrid(ts_grid_x,ts_grid_y,ts_grid_z)
   diff_grid = torch.stack([diff_i_grid_x, diff_i_grid_y, diff_i_grid_z])

@@ -18,9 +18,9 @@ def get_conv_3d(grid_size):
 
 
 class warp_layer_3d(nn.Module):
-  def __init__(self, grid_size, checker_board = False):
+  def __init__(self, grid_size, vox_size, checker_board = False):
     super().__init__()
-    self.upsampler = nn.Upsample(size = [VOX_SIZE, VOX_SIZE, VOX_SIZE], mode = 'trilinear')
+    self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear')
     self.grid_offset_x = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True) 
     self.grid_offset_y = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True)
     self.grid_offset_z = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True)
@@ -76,11 +76,11 @@ class conv_layer_3d(nn.Module):
 
 #define the model class
 class ALIGNet_3d(nn.Module):
-  def __init__(self, name, grid_size, init_grid):
+  def __init__(self, name, grid_size, vox_size,init_grid):
     super().__init__()
     self.name = name 
-    self.conv_layer = conv_layer_3d(grid_size)
-    self.warp_layer = warp_layer_3d(grid_size)
+    self.conv_layer = conv_layer_3d(grid_size, init_grid)
+    self.warp_layer = warp_layer_3d(grid_size, vox_size)
     self.axial_layer = axial_layer_3d(grid_size)
   #returns a differential grid
   def forward(self, x):
