@@ -1,40 +1,56 @@
 import argparse
 import os
 import torch 
+import numpy as np
 from model import io_3d
-
 import run_3d, config_3d, model, preprocess, test
 from model import io_3d, ops_3d, network_3d
+from preprocess import datasets
+
+#given a string of datatype, return its appropriate index
+def data_idx(datatype_str):
+  dtype = 0
+  if datatype_str == "plane":
+    dtype = 0
+  return dtype
+    
+#common code snippet--load data as specified
+def load_ds():
+  #decide and load which type of data to use (ADD MORE DATA)
+  #default d_type = plane
+  dtype = data_idx(args.type)
+  #load datasets
+  tr, val, test = io_3d.load_ds(os.path.join(config_3d.MODEL_PATH,args.name, args.type,'/datasets/'), ds_index=dtype)
+  return tr, val, test
+  
+#load and augment train and valid datasets
+def get_ds(file_path, total_num, pt_sample):
+  tr_index, val_index = sample_index(train_size, val_size, total_num)
+  tr_mesh = io_3d.Load_Mesh(file_path, sample_index=tr_index)
+  val_mesh = io_3d.Load_Mesh(file_path, sample_index=val_index)
+  tr, val = datasets.get_datasets_3d(tr_mesh,val_mesh, config_3d.VOX_SIZE, total_num, pt_sample)
+  return tr, val
+#common code snippet--run the train iteration loop
+def train_model(args):
+  #save the iter variable as default or specified by the user
+  iter = 10
+  if args.iter: 
+    iter = args.iter
+  #make an overfit check if specified by config 
+  result_check = None 
+  result_check_path = config.MODEL_PATH + args.name + '/result_checker'
+  if config_3d.RESULT_CHECK:
+     #make the valid dataset
+    val_tar, val_src, val_tar_aug, val_src_aug = preprocess.datasets.get_val_dl(tr, val)
+    if os.path.exists(result_check_path): 
+      obj = preprocess.io_3d.load_obj(result_check_path)
+    else:
+      result_check = test.validate_3d.result_checker_3d(model, val_tar, val_src)
+  run_3d.train_3d(model, iter, tr, val, test, args.name, result_checker=result_check, train_mode=config.TRAIN_MODE, graph_loss=config.GRAPH_LOSS)
+  torch.save(model.state_dict(), config_3d.MODEL_PATH + args.name +'/'+ args.name+'.pt')
+  preprocess.io_3d.save_obj(result_check, result_check_path)
 
 if __name__ == '__main__':
-  #common code snippet--load data as specified
-  def load_ds():
-    #decide and load which type of data to use (ADD MORE DATA)
-    if args.type == 'plane ':
-      d_type = config.PLANE
-    #load datasets
-    tr, val, test = io_3d.load_ds(os.path.join(config_3d.MODEL_PATH,args.name, args.type,'/datasets/'), d_type)
-    return tr, val, test
-    
-  #common code snippet--run the train iteration loop
-  def train_model():
-    #save the iter variable as default or specified by the user
-    iter = 10
-    if args.iter: 
-      iter = args.iter
-    #make an overfit check if specified by config 
-    result_check = None 
-    result_check_path = config.MODEL_PATH + args.name + '/result_checker'
-    if config_3d.RESULT_CHECK:
-       #make the valid dataset
-      val_tar, val_src, val_tar_aug, val_src_aug = preprocess.datasets.get_val_dl(tr, val)
-      if os.path.exists(result_check_path): 
-        obj = preprocess.io_3d.load_obj(result_check_path)
-      else:
-        result_check = test.validate_3d.result_checker_3d(model, val_tar, val_src)
-    run_3d.train_3d(model, iter, tr, val, test, args.name, result_checker=result_check, train_mode=config.TRAIN_MODE, graph_loss=config.GRAPH_LOSS)
-    torch.save(model.state_dict(), config_3d.MODEL_PATH + args.name +'/'+ args.name+'.pt')
-    preprocess.io_3d.save_obj(result_check, result_check_path)
   
   #initialize all config settings
   config_3d.initialize_config()
@@ -54,7 +70,7 @@ if __name__ == '__main__':
   
   #download and save new dataset
   data.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
-  
+  data.add_argument("-d", "--download", action='store_true', help ="Download the data and get the dataset")
   #train a model previously created
   train.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
   train.add_argument("-i", "--iter", type=int, help="number of times to run the training loop, default: 10")
@@ -78,15 +94,16 @@ if __name__ == '__main__':
     if not os.path.exists(path):
         os.makedirs(path)
       
-        
-    model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
-    tr, val, test = model.io_3d.get_datasets(d_type)
+    #download only if the download flag is set
+    if args.download:
+      model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
+    dtype = data_idx(args.type)
+    tr, val = get_ds(path, 400, 10000)
     
     #save datasets to the same directory as the model
     model.io_3d.save_ds(tr, 'tr', path )
     model.io_3d.save_ds(val, 'val', path )
-    model.io_3d.save_ds(test, 'test', path )
-    
+
 
   #check the type of data (for now, we will only support plane--add more)
   if args.type == 'plane':
@@ -115,7 +132,7 @@ if __name__ == '__main__':
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/loss_graphs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/images')
     tr, val, test = load_ds()
-    train_model()
+    train_model(args)
     
     
   #we will check the initialized directories to verify that models/datasets are initialized
@@ -133,8 +150,8 @@ if __name__ == '__main__':
     model_obj_path = model_path + args.name + '.pt'
     model = preprocess.io_3d.load_model(model_obj_path, args.name, config_3d.GRID_SIZE).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
-    tr, val, test = preprocessio_3d.load_ds(data_path, data_index)
-    train_model()
+    tr, val, test = load_ds()
+    train_model(args)
     
   
   if args.command == 'valid':
@@ -145,7 +162,7 @@ if __name__ == '__main__':
     image_path = model_path + '/outputs/images/'
     image_path = preprocess.io_3d.latest_filename(image_path)
     #load the neccessary datasets
-    tr, val, test = preprocess.io_3d.load_ds(data_path, data_index)
+    tr, val, test = load_ds()
     val_tar_dl, val_src_dl, val_tar_dl_aug, val_src_dl_aug = preprocess.datasets.get_val_dl_3d(tr, val, test)
     result_checker = test.validate_3d.result_checker_3d(model_plane, val_tar_dl, val_src_dl)
     result_checker.update()

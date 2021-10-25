@@ -12,9 +12,9 @@ def initialize_config():
     global TARGET_PROPORTION
     global TARGET_PROPORTION_VAL
     global TARGET_PROPORTION_TEST 
+    global TRAIN_SIZE
     global VAL_SIZE
     global N_CLASS
-    global TEST_SIZE
     global IMAGE_SIZE
     
     #parameters for mask operation
@@ -60,6 +60,7 @@ def initialize_config():
     TARGET_PROPORTION = 0.5
     TARGET_PROPORTION_VAL = 0.5
     TARGET_PROPORTION_TEST = 0.5
+    TRAIN_SIZE = 100
     VAL_SIZE = 20
     N_CLASS = 10
     TEST_SIZE = 10

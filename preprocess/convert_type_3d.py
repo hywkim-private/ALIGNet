@@ -1,10 +1,10 @@
 import torch 
 from pathlib import Path
 import pytorch3d as p3d
-from torch.utils.data import random_split
+from torch.utils.data import random_split, Dataset
 from pytorch3d import structures
 from pytorch3d.ops import sample_points_from_meshes
-from . import voxellize, io_3d, augment_3d
+from . import voxelize, augment_3d
 
 #given dataset of meshes, sample data into pointclouds
 #if mesh is False, we are using the pointcloud 
