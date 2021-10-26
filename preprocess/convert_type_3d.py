@@ -30,8 +30,7 @@ def Voxel(pointcloud, voxel_num):
 #load the mesh from a given location, save both the pointcloud and voxel representation of the model
 class Compound_Data():
   #load the mesh data
-  def __init__(self, filepath, device, sample_index=None):
-    mesh = Load_Mesh(filepath, sample_index).to(device)
+  def __init__(self, mesh, device):
     self.mesh = mesh
     self.pointcloud = None
     self.voxel = None
@@ -82,17 +81,17 @@ class Expand(Dataset):
 #if val_set is set to True, the loader returns one (identical) element
 #for 3d, we will only support random mask operation
 class Augment_3d(Dataset):
-  def __init__(self, tar_img, batch_size, im_size, val_set=False, augment_times=0):
+  def __init__(self, tar, batch_size, size, val_set=False, augment_times=0):
     self.val_set = val_set
     self.batch_size = batch_size
     self.augment_times = augment_times
     #first augment the original tar_list to match the returning batch size, then perform augmentation
     tar_list = []
     for i in range(self.augment_times):
-      tar_list.append(tar_img)
+      tar_list.append(tar)
     self.tar_list = torch.utils.data.ConcatDataset(tar_list)
     self.aug_list = torch.utils.data.ConcatDataset(tar_list)
-    self.im_size = im_size
+    self.size = size
 
   def __getitem__(self, index):
     #return augmented list when val_set is set to true
@@ -111,7 +110,7 @@ class Augment_3d(Dataset):
   #return both the augmented voxel and the original voxel
   #input shape: batchx NxDxWxH
   def mask(self, aug_batch):
-    aug_vx = augment_3d.random_mask_3d(aug_batch, self.im_size, (10, 40), square=True)
+    aug_vx = augment_3d.random_mask_3d(aug_batch, self.size, (10, 40), square=True)
     return aug_vx
 
   def collate_fn(self, batch):

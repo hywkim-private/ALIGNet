@@ -50,6 +50,9 @@ def initialize_config():
     global GRAPH_LOSS
     global RESULT_CHECK
     
+    global PT_SAMPLE
+    global NUM_SAMPLE
+    
 
     #define hyper parameters 
     USE_CUDA = torch.cuda.is_available()

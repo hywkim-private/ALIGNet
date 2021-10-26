@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from imgaug import augmenters as iaa
+from . import ops_3d
 
 #define the alignnet model
 def get_conv_3d(grid_size):
@@ -32,7 +33,7 @@ class warp_layer_3d(nn.Module):
 
   def forward(self, x, src_batch):
     #perform the cumsum operation to restore the original grid from the differential grid
-    x = model.cumsum_3d(x, self.grid_offset_x, self.grid_offset_y, self.grid_offset_z)
+    x = ops_3d.cumsum_3d(x, self.grid_offset_x, self.grid_offset_y, self.grid_offset_z)
     #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
     x = self.upsampler(x)
     x = x.permute(0,2,3,4,1)

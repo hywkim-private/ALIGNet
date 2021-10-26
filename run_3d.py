@@ -6,7 +6,8 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 import config_3d
-from model import loss_3d
+from model import loss_3d, io_3d
+from preprocess import datasets
   
 #run the model for a single epoch
 #data_loader can either be a single data_loader or a iterable list of data loaders (in such case, source loader should also be a list of data loaders)
@@ -59,7 +60,7 @@ def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, grap
   epoch_loss = []
   for i in range(config_3d.EPOCHS):
     loss_list = run_epoch_3d(model, optimizer, src_loader, tar_loader, grid_size)
-    avg_epoch_loss = config_3d.avg_loss_3d(loss_list)
+    avg_epoch_loss = loss_3d.avg_loss_3d(loss_list)
     print(f'Loss in Epoch {i}: {avg_epoch_loss}')
     if not result_checker == None:
       result_checker.update(avg_epoch_loss)
@@ -78,9 +79,9 @@ def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, grap
 #train_mode = 0: only trains on original images
 #train_mode = 1: only trains on augmented images
 #train_mode = 2: trains both on original and augmented images
-def train_3d(model, iter, tr, val, model_name, train_mode = 0, result_checker=None, graph_loss=False):
-  for i in range(iter):
-    tr_tar, tr_src, val_tar, val_src = aug_datasets_3d(tr, val, augment_times=10)
+def train_3d(model, model_path, iter_t, tr, model_name, train_mode = 0, result_checker=None, graph_loss=False):
+  for i in range(iter_t):
+    tr_tar, tr_src = datasets.aug_datasets_3d(tr.voxel, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, augment_times=config_3d.AUGMENT_TIMES_TR)
     tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
     tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
     tr_tar = tr_tar_dl
@@ -109,5 +110,5 @@ def train_3d(model, iter, tr, val, model_name, train_mode = 0, result_checker=No
         tr_tar = tr_tar_dl_aug
         tr_src = tr_src_dl_aug"""
     run_model(model, tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
-    save_model(model,  './gdrive/MyDrive/ALIGNet/3d/model/model_plane')
+    io_3d.save_model(model, model_path, model_name)
     

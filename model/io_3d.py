@@ -51,8 +51,8 @@ def Load_Mesh(file_path, sample_index = None):
   return data
   
 
-def save_model(checkpoint, checkpoint_path):
-  path = checkpoint_path
+def save_model(checkpoint, checkpoint_path, filename):
+  path = checkpoint_path + filename
   torch.save(checkpoint, path)
   
 
@@ -64,13 +64,13 @@ def save_ds(ds, ds_name, ds_path):
   
 #load raw datasets from dir
 def load_ds(path, ds_index=0):
+  #TODO: add more datasets
   ds_name = 'plane'
   #if ds_index == 1:
     #ds_name = 'plane'
-  tr = torch.load(path+'tr'+ '.pt')
-  val = torch.load(path+'val'+ '.pt')
-  test = torch.load(path+'test'+ '.pt')
-  return tr, val, test
+  tr = torch.load(os.path.join(path, 'tr.pt'))
+  val = torch.load(os.path.join(path, 'val.pt'))
+  return tr, val
 
 #load the model
 def load_model(path, name, grid_size):

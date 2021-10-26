@@ -3,7 +3,7 @@ import os
 import torch 
 import numpy as np
 from model import io_3d
-import run_3d, config_3d, model, preprocess, test
+import run_3d, config_3d, model, preprocess, test, validate_3d
 from model import io_3d, ops_3d, network_3d
 from preprocess import datasets
 
@@ -20,33 +20,36 @@ def load_ds():
   #default d_type = plane
   dtype = data_idx(args.type)
   #load datasets
-  tr, val, test = io_3d.load_ds(os.path.join(config_3d.MODEL_PATH,args.name, args.type,'/datasets/'), ds_index=dtype)
-  return tr, val, test
+  tr, val = io_3d.load_ds(config_3d.DATA_PATH +'datasets/'+args.type+'/', ds_index=dtype)
+  return tr, val
   
 #load and augment train and valid datasets
-def get_ds(file_path, total_num, pt_sample):
-  tr_index, val_index = sample_index(train_size, val_size, total_num)
+def get_ds(file_path, tr_size, val_size, total_num, pt_sample):
+  tr_index, val_index = datasets.sample_index(tr_size, val_size, total_num)
   tr_mesh = io_3d.Load_Mesh(file_path, sample_index=tr_index)
   val_mesh = io_3d.Load_Mesh(file_path, sample_index=val_index)
-  tr, val = datasets.get_datasets_3d(tr_mesh,val_mesh, config_3d.VOX_SIZE, total_num, pt_sample)
+  #here we convert mesh datatype into pointlcoud and voxel datatype
+  tr, val = datasets.get_datasets_3d(tr_mesh,val_mesh, config_3d.VOX_SIZE, pt_sample, config_3d.DEVICE)
   return tr, val
+  
 #common code snippet--run the train iteration loop
-def train_model(args):
+def train_model(args, model_path):
   #save the iter variable as default or specified by the user
-  iter = 10
+  iter_t = 10
   if args.iter: 
-    iter = args.iter
+    iter_t = args.iter
   #make an overfit check if specified by config 
   result_check = None 
-  result_check_path = config.MODEL_PATH + args.name + '/result_checker'
+  result_check_path = config_3d.MODEL_PATH + args.name + '/result_checker'
   if config_3d.RESULT_CHECK:
-     #make the valid dataset
-    val_tar, val_src, val_tar_aug, val_src_aug = preprocess.datasets.get_val_dl(tr, val)
+    #make the valid dataset
+    val_tar, val_src = preprocess.datasets.get_val_dl_3d(
+      val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
     if os.path.exists(result_check_path): 
       obj = preprocess.io_3d.load_obj(result_check_path)
     else:
-      result_check = test.validate_3d.result_checker_3d(model, val_tar, val_src)
-  run_3d.train_3d(model, iter, tr, val, test, args.name, result_checker=result_check, train_mode=config.TRAIN_MODE, graph_loss=config.GRAPH_LOSS)
+      result_check = validate_3d.result_checker_3d(model, val_tar, val_src)
+  run_3d.train_3d(model, model_path, iter_t, tr, args.name,  train_mode=config_3d.TRAIN_MODE, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
   torch.save(model.state_dict(), config_3d.MODEL_PATH + args.name +'/'+ args.name+'.pt')
   preprocess.io_3d.save_obj(result_check, result_check_path)
 
@@ -83,42 +86,50 @@ if __name__ == '__main__':
   
   
   args = ap.parse_args()
+  
+   
+  #check the type of data (for now, we will only support plane--add more)
+  if args.type == 'plane':
+    data_path = config_3d.DATA_PATH_PLANE
+    data_index = 0
+
   #if new data, download data, create, and save
   if args.command == 'data': 
     #first, check for existing directory and if not, create a new directory to store data 
-    #we assume a all-inclusive imagenet dataset, so only need to download once  
-    path = config_3d.DATA_PATH
+    #we assume a all-inclusive imagenet dataset, so only need to download once 
+    #TODO: add other datatypes as if statement
+    load_path = config_3d.DATA_PATH_PLANE
+    save_path = config_3d.DATA_PATH + 'datasets/' + args.type + '/'
     url = config_3d.URL_DATA
       
     #download data
-    if not os.path.exists(path):
-        os.makedirs(path)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
       
     #download only if the download flag is set
     if args.download:
       model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
     dtype = data_idx(args.type)
-    tr, val = get_ds(path, 400, 10000)
+    tr, val = get_ds(load_path, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, 100, config_3d.PT_SAMPLE)
     
     #save datasets to the same directory as the model
-    model.io_3d.save_ds(tr, 'tr', path )
-    model.io_3d.save_ds(val, 'val', path )
-
-
-  #check the type of data (for now, we will only support plane--add more)
-  if args.type == 'plane':
-    data_path = config_3d.DATA_PATH_PLANE
-    data_index = 0
-  #get the path to the target model
-  model_path = config_3d.MODEL_PATH + args.name + '/'
-  model_obj_path = model_path + args.name + '.pt'
-
+    model.io_3d.save_ds(tr, 'tr', save_path)
+    model.io_3d.save_ds(val, 'val', save_path)
+    
+  else:
+    #get the path to the target model
+    model_path = config_3d.MODEL_PATH + args.name + '/'
+    model_obj_path = model_path + args.name + '.pt'
     
   #if new model, download and create dataset, make new model
   if args.command == 'new':
     #first check if the dataset exists
     if not os.path.exists(data_path):
       print(f"Dataset not found in path {data_path}: create dataset using [data] argument")
+      exit()
+    #check if the dataset exists
+    if os.path.exists(model_path):
+      print(f"Model {args.name} already exists in {model_path}: use [train] argument to do additional training or create a model with different name")
       exit()
     save_path = config_3d.DATA_PATH + args.name
     #make new  model
@@ -131,27 +142,28 @@ if __name__ == '__main__':
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/loss_graphs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/images')
-    tr, val, test = load_ds()
-    train_model(args)
+    tr, val = load_ds()
+    train_model(args, model_path)
     
-    
-  #we will check the initialized directories to verify that models/datasets are initialized
-  #the commands below (valid and train) both need to be checked if the model exists or not -- error if  not 
-  if not os.path.exists(data_path):
-    print(f"Dataset not found in path {data_path}: create dataset using [data] argument")
-    exit()
-  #check if the dataset exists
-  if not os.path.exists(model_path):
-    print(f"Model not found in path {model_path}: create model using [new] argument")
-    exit()
-    
+  #common operation for train and valid 
+  elif args.command == 'train' or args.command == 'valid':
+    #we will check the initialized directories to verify that models/datasets are initialized
+    #the commands below (valid and train) both need to be checked if the model exists or not -- error if  not 
+    if not os.path.exists(data_path):
+      print(f"Dataset not found in path {data_path}: create dataset using [data] argument")
+      exit()
+    #check if the dataset exists
+    if not os.path.exists(model_path):
+      print(f"Model not found in path {model_path}: create model using [new] argument")
+      exit()
+      
   if args.command == 'train':
     #load the target model
     model_obj_path = model_path + args.name + '.pt'
     model = preprocess.io_3d.load_model(model_obj_path, args.name, config_3d.GRID_SIZE).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
-    tr, val, test = load_ds()
-    train_model(args)
+    tr, val = load_ds()
+    train_model(args, model_path)
     
   
   if args.command == 'valid':
@@ -162,7 +174,7 @@ if __name__ == '__main__':
     image_path = model_path + '/outputs/images/'
     image_path = preprocess.io_3d.latest_filename(image_path)
     #load the neccessary datasets
-    tr, val, test = load_ds()
+    tr, val = load_ds()
     val_tar_dl, val_src_dl, val_tar_dl_aug, val_src_dl_aug = preprocess.datasets.get_val_dl_3d(tr, val, test)
     result_checker = test.validate_3d.result_checker_3d(model_plane, val_tar_dl, val_src_dl)
     result_checker.update()
@@ -184,4 +196,3 @@ if __name__ == '__main__':
       
     
     
-  

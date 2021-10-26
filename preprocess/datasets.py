@@ -1,5 +1,5 @@
 import numpy as np
-from torch.utils.data import random_split
+from torch.utils.data import random_split, DataLoader
 from . import convert_type_3d as conv
 
 #given train size and val_size, return a random list of indexes for train and val set samples
@@ -10,22 +10,21 @@ def sample_index(train_size, val_size, total_num):
   index_val = np.random.choice(pool, size=val_size)
   return index_train, index_val
 
-#load the datasets and split accordingly to the global definition
+#convert the types of datasets
+#helper function for aug_datasets_3d
 #we split this functionality to gurantee manual augmentation of data on same randomly-split datasets
 #returns: a set of train and valid datasets of meshes
-def get_datasets_3d(file_path, vox_size, train_size, val_size, total_num, pt_sample ):
-  train_index, val_index = sample_index(train_size, val_size, total_num)
-  train_set = conv.Compound_Data(file_path, train_index)
-  val_set = conv.Compound_Data(file_path, val_index)
-  train_set.get_pointcloud(10000)
-  train_set.get_voxel(32)
-  val_set.get_pointcloud(10000)
-  val_set.get_voxel(32)
+def get_datasets_3d(tr, val, vox_size, pt_sample, device):
+  train_set = conv.Compound_Data(tr, device)
+  val_set = conv.Compound_Data(val, device)
+  train_set.get_pointcloud(pt_sample)
+  train_set.get_voxel(vox_size)
+  val_set.get_pointcloud(pt_sample)
+  val_set.get_voxel(vox_size)
   return train_set, val_set
 
-#-----------TODO------------
 #augment datasets according to the parameters
-#dataset-the data to augment
+#dataset-the data to augment(CompoundData)
 #settype-whether it is a train or valid data (o for train 1 for valid)
 #split_proportion-the proportion of target data (souce data proportion = 1 - split_proportion)
 #batch_size-size of batch
@@ -40,6 +39,7 @@ def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, au
   else:
     tar = conv.Augment_3d(tar, batch_size, vox_size, augment_times=augment_times)
   src = conv.Expand(src, len(tar))
+  
   return tar, src
   
 """#given train and valid, return appropriatly augmented data for each set 
@@ -62,16 +62,17 @@ def aug_train_valid_3d(train_set, valid_set, split_proportion_tr, split_proporti
 
 #given dataset, return the appropriate dataloader
 #SAME as 2d
-def get_dataloader(ds, augment=False, shuffle=False):
+def get_dataloader(ds, batch_size, augment=False, shuffle=False):
   SHUFFLE = shuffle 
   if augment:
-    dl = DataLoader(ds, batch_size=config_3d.BATCH_SIZE, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
+    dl = DataLoader(ds, batch_size=batch_size, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
   else:
-    dl = DataLoader(ds, batch_size=config_3d.BATCH_SIZE, shuffle=SHUFFLE)  
+    dl = DataLoader(ds, batch_size=batch_size, shuffle=SHUFFLE)  
   return dl
 
-def get_val_dl_3d(tr, val):
-  tr_tar_ds, tr_src_ds, val_tar_ds, val_src_ds = aug_datasets_3d(tr, val)
-  val_tar_dl = get_dataloader(val_tar_ds, augment=True, shuffle=True)
-  val_src_dl = get_dataloader(val_src_ds, shuffle=True)
+def get_val_dl_3d(val, split_proportion, batch_size, vox_size, augment_times):
+  val_tar_ds, val_src_ds = aug_datasets_3d(
+    val.voxel, 1, split_proportion, batch_size, vox_size, augment_times=augment_times)
+  val_tar_dl = get_dataloader(val_tar_ds, batch_size, augment=True, shuffle=True)
+  val_src_dl = get_dataloader(val_src_ds, batch_size, shuffle=True)
   return val_tar_dl, val_src_dl

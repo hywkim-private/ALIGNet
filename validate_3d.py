@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pytorch3d import ops
 from preprocess import convert_type_3d as conv
+import config_3d
 from model import loss_3d
 
 #this class stores necessary in order to check and validate results of the model
@@ -28,7 +29,7 @@ class result_checker_3d():
   #run the validate function and update the tr_val_gap parameter
   #include a train loss if youre validating for a training loop
   def update(self,train_loss=None):
-    tar_list, src_list, est_list, grid_list, avg_loss = validate_dl_3d(self.model, self.valid_src, self.valid_tar, GRID_SIZE)
+    tar_list, src_list, est_list, grid_list, avg_loss = validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE)
     self.avg_loss = avg_loss
     self.tar_list = tar_list
     self.src_list = src_list
@@ -120,11 +121,11 @@ def validate_dl_3d(model, source_dl, target_dl, grid_size):
   for i in range(len(target_dl)):
     target_image = next(target_iter)
     source_image = next(source_iter)
-    target_image = torch.FloatTensor(target_image).squeeze(dim=1).to(DEVICE)
-    source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(DEVICE)
+    target_image = torch.FloatTensor(target_image).squeeze(dim=1).to(config_3d.DEVICE)
+    source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(config_3d.DEVICE)
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3,4])
-    tar_est, diff_grid, loss = validate_3d(model, source_image, target_image, grid_size, checker_board)
+    tar_est, diff_grid, loss = validate_3d(model, source_image, target_image, grid_size)
     target_list.append(target_image)
     source_list.append(source_image)
     est_list.append(tar_est)
