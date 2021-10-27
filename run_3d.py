@@ -110,5 +110,5 @@ def train_3d(model, model_path, iter_t, tr, model_name, train_mode = 0, result_c
         tr_tar = tr_tar_dl_aug
         tr_src = tr_src_dl_aug"""
     run_model(model, tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
-    io_3d.save_model(model, model_path, model_name)
+    io_3d.save_model(model, model_path, model_name+'.pt')
     

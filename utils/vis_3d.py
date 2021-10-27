@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import random
 
 #Some other 3d visualization routines using open 3d
-import open3d as o3d
 import torch
 from torch.utils.data import Dataset, DataLoader
 
@@ -152,16 +151,15 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, index):
 #save_img is the path to save the img
 #datatype: 0-voxel, 1-mesh, 2-pointcloud
 def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index=0, sample=None, save_path=None):
-  src_batch = src_batch[batch_index].to(CPU)
-  tar_batch = tar_batch[batch_index].to(CPU)
-  tar_est = tar_est[batch_index].to(CPU)
+  src_batch = src_batch[batch_index]
+  tar_batch = tar_batch[batch_index]
+  tar_est = tar_est[batch_index]
   batch = len(src_batch)
   index = np.arange(batch-1)
   #sample specific number of elements from the batch if specified
   if sample:
     index = np.random.choice(index, sample)
   index = np.sort(index)
-  print(f"visualize_results_3d: index-{index}")
   #the case for when datatype is voxel
   if datatype==0:
     visualize_results_3d_vox(src_batch, tar_batch, tar_est, index)
@@ -171,30 +169,9 @@ def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index
     visualize_results_3d_pt(src_batch, tar_batch, tar_est, index)
 
   if save_path:
+    print(f"Visualize_results_3d: Image saved to path {save_path}")
     plt.savefig(save_path, format='png')
   return
 
 
 
-#given any type of iterables -- list, arrays, tensors, datasets, etc-- sample data from the set and visualize
-#iter_return denotes how many output the iterable returns for each iteration
-def visualize_sample(iterable, sample_size, iter_return = 1):
-  iter_length = len(iterable)
-  sample_index = []
-  i = 0
-  #append n sample indexes to the list sample_index
-  while(not i == len(sample_size)-1):
-    index = np.random.randint(mask_size_low, mask_size_high)
-    if index not in sample_index:
-      sample_index.append[index]
-  #create a list to store the sample data
-  data_list = []
-  for i in range(sample_size):
-    index = sample_index[i]
-    if iter_return == 1:
-      data = iterable[index]
-      data_list.append(data)
-    else: 
-      data_src, data_tar = iterable[index]
-      data_list.append([data_src, data_tar])
-  o3d.visualization.draw_geometries(data_list)

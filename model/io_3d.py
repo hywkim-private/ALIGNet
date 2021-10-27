@@ -1,10 +1,11 @@
 import torch 
 import pickle 
 import os
+import glob
 from pathlib import Path
 from pytorch3d import io
 from zipfile import ZipFile
-from model import network_3d
+from . import network_3d, ops_3d
 import wget
 
 #a function that parses through the file and returns the filename of the highest index number
@@ -71,13 +72,6 @@ def load_ds(path, ds_index=0):
   tr = torch.load(os.path.join(path, 'tr.pt'))
   val = torch.load(os.path.join(path, 'val.pt'))
   return tr, val
-
-#load the model
-def load_model(path, name, grid_size):
-  model_ = network_3d.ALIGNet_3d(name, grid_size)
-  model_l = torch.load(path)
-  model_.load_state_dict(model_l)
-  return model_
 
 
 #a function to save objects--namely the result_checker

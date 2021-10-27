@@ -10,6 +10,7 @@ from pytorch3d import ops
 from preprocess import convert_type_3d as conv
 import config_3d
 from model import loss_3d
+from utils.vis_3d import visualize_results_3d
 
 #this class stores necessary in order to check and validate results of the model
 class result_checker_3d():

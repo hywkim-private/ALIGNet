@@ -168,27 +168,28 @@ if __name__ == '__main__':
   
   if args.command == 'valid':
     #load the previous model
-    model = preprocess.io_3d.load_model(model_obj_path, args.name,config_3d.GRID_SIZE).to(config_3d.DEVICE)
-    model= model.to(config_3d.DEVICE)
+    model = torch.load(model_obj_path).to(config_3d.DEVICE)
     #path to save the visualized image 
-    image_path = model_path + '/outputs/images/'
-    image_path = preprocess.io_3d.latest_filename(image_path)
+    image_path = model_path + 'outputs/images/'
+    image_path = io_3d.latest_filename(image_path)
     #load the neccessary datasets
     tr, val = load_ds()
-    val_tar_dl, val_src_dl, val_tar_dl_aug, val_src_dl_aug = preprocess.datasets.get_val_dl_3d(tr, val, test)
-    result_checker = test.validate_3d.result_checker_3d(model_plane, val_tar_dl, val_src_dl)
+    #get the target and val sets
+    val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
+      val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
+    result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
     result_checker.update()
     #visualize if specified
     #pointcloud
     if args.visualize == 'pointcloud':
-      result_checker2.get_pointcloud(config_3d.PT_SAMPLE)
-      result_checker2.visualize(config_3d.NUM_SAMPLE, datatype=1)
+      result_checker.get_pointcloud(config_3d.PT_SAMPLE)
+      result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
     #mesh--NOT WORKING (RETURN ERROR FOR NOW)
     elif args.visualize == 'mesh':
-      print("ERROR: MESH VISUALIZATION IS CURRENTLY UNDER DEVELOPMENT--USE A DIFFERENT FORMAT")
+      print("ERROR: MESH VISUALIZATION IS CURRENTLY UNDER DEVELOPMENT--USE A DIFFERENT DATATYPE TO VISUALIZE")
     #voxel
     else:
-      result_checker2.visualize(config_3d.NUM_SAMPLE, datatype=0)
+      result_checker.visualize(datatype=0, sample=config_3d.NUM_SAMPLE, save_path=image_path)
  
     
       

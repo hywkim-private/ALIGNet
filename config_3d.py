@@ -6,6 +6,7 @@ def initialize_config():
         #define hyper parameters 
     global USE_CUDA
     global DEVICE
+    global CPU
     global EPOCHS 
     global BATCH_SIZE 
     
@@ -57,6 +58,7 @@ def initialize_config():
     #define hyper parameters 
     USE_CUDA = torch.cuda.is_available()
     DEVICE = torch.device("cuda" if USE_CUDA else "cpu")
+    CPU = torch.device('cpu')
     EPOCHS = 50
     BATCH_SIZE = 50
     
