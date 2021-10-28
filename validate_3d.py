@@ -12,6 +12,16 @@ import config_3d
 from model import loss_3d
 from utils.vis_3d import visualize_results_3d
 
+#TODO: THE MESH REPRESENTATION OF THE INPUT DATA IS NOT STORED IN DATALOADERS IN THE FIRST PLACE
+#MUST MODIFY THE DATALOADERS IN ORDER TO RETURN A PACKED (MESH, VOXEL) TUPLE IF SPECIFIED BY AN ARGUMENT (DONE)
+
+
+#TODO: FOR NOW, THE FUNCTION AUG_DATASETS_3D GETS SRC DATALOADER THAT RETURNS BOTH VOXEL AND MESH IF 
+#THE DATASET IS KNOWN TO BE A VALID DATASET
+#HOWEVER, FOR THE SAKE OF MEMORY, MUST ALSO CONSIDER GETTING SUCH DATALOADER ONLY IF SPECIFIED BY THE VISUALIZE PARAMETER
+#THAT IS, WE WILL ONLY GET MESH REPRESENTATIONS (AND THUS WARP) ONLY WHEN WE ARE GOINGI TO VISUALIZE THE VALIDATION RESULTS 
+
+
 #this class stores necessary in order to check and validate results of the model
 class result_checker_3d():
   def __init__(self, model, valid_tar, valid_src):
@@ -30,16 +40,23 @@ class result_checker_3d():
   #run the validate function and update the tr_val_gap parameter
   #include a train loss if youre validating for a training loop
   def update(self,train_loss=None):
-    tar_list, src_list, est_list, grid_list, avg_loss = validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE)
+    tar_list, src_list, est_list, diff_grid_list, def_grid_list, avg_loss = validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE)
     self.avg_loss = avg_loss
     self.tar_list = tar_list
     self.src_list = src_list
     self.est_list = est_list
-    self.grid_list = grid_list
+    #TODO: estimation in mesh form -- apply deformation directly to the mesh
+    self.est_mesh_list = None 
+    self.diff_grid_list = diff_grid_list
+    self.def_grid_list = def_grid_list
     self.val_loss.append(avg_loss)
     self.train_loss.append(train_loss)
     self.epoch += 1
     self.updated = True
+    
+  #apply the deformation directly to mesh, and save it in est_mesh_list
+  def warp_mesh(self):
+    
     
   #after updating the voxelized results, get their mesh representations 
   #save lists of voxelized tar, src, est data
@@ -102,11 +119,13 @@ def validate_3d(model, source_image, target_image, grid_size):
   input_image = torch.stack([source_image, target_image])
   input_image  = input_image.permute([1,0,2,3,4])
   diff_grid = model.forward(input_image)
-  tar_est = model.warp(diff_grid, source_image)
+  #we will use def grid to apply warp directly to mesh
+  def_grid = model.cumsum(diff_grid)
+  tar_est = model.warp(def_grid, source_image)
   tar_est = tar_est.squeeze(dim=1)
   #calculate the loss for the image
   loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
-  return tar_est, diff_grid, loss
+  return tar_est, diff_grid, def_grid, loss
 
 #run loop for the dataloaders to run the validate() operation
 @torch.no_grad()
@@ -117,7 +136,8 @@ def validate_dl_3d(model, source_dl, target_dl, grid_size):
   target_list = []
   source_list = []
   est_list = []
-  grid_list = []
+  diff_grid_list = []
+  def_grid_list = []
   loss_list = []
   for i in range(len(target_dl)):
     target_image = next(target_iter)
@@ -126,13 +146,14 @@ def validate_dl_3d(model, source_dl, target_dl, grid_size):
     source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(config_3d.DEVICE)
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3,4])
-    tar_est, diff_grid, loss = validate_3d(model, source_image, target_image, grid_size)
+    tar_est, diff_grid, def_grid, loss = validate_3d(model, source_image, target_image, grid_size)
     target_list.append(target_image)
     source_list.append(source_image)
     est_list.append(tar_est)
-    grid_list.append(diff_grid)
+    diff_grid_list.append(diff_grid)
+    def_grid_list.append(def_grid)
     loss_list.append(loss)
   avg_loss_ = loss_3d.avg_loss_3d(loss_list)
-  return target_list, source_list, est_list, grid_list, avg_loss_
+  return target_list, source_list, est_list, diff_grid_list, def_grid_list, avg_loss_
   
 

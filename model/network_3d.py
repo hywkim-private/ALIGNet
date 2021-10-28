@@ -17,8 +17,8 @@ def get_conv_3d(grid_size):
   )
   return model
 
-
-class warp_layer_3d(nn.Module):
+#perform cumsum operation, then upsample the grid to vox_size
+class cumsum_layer_3d(nn.Module):
   def __init__(self, grid_size, vox_size, checker_board = False):
     super().__init__()
     self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear')
@@ -29,13 +29,21 @@ class warp_layer_3d(nn.Module):
     self.grid_offset_y = nn.Parameter(self.grid_offset_y)
     self.grid_offset_z = nn.Parameter(self.grid_offset_z)
     self.grid_size = grid_size
-
-
-  def forward(self, x, src_batch):
+    
+  def forward(self, x):
     #perform the cumsum operation to restore the original grid from the differential grid
     x = ops_3d.cumsum_3d(x, self.grid_offset_x, self.grid_offset_y, self.grid_offset_z)
     #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
     x = self.upsampler(x)
+    #shape (N,C,D,H,W)
+    return x
+    
+    
+class warp_layer_3d(nn.Module):
+  def __init__(self):
+    super().__init__()
+    
+  def forward(self, x, src_batch):
     x = x.permute(0,2,3,4,1)
     #calculate target estimation
     #input of shape (N,C,D,H,W)
@@ -72,23 +80,26 @@ class conv_layer_3d(nn.Module):
     x = self.flatten(x)
     x = self.linear1(x)
     x = self.linear2(x)
-    
     return x
 
 #define the model class
 class ALIGNet_3d(nn.Module):
-  def __init__(self, name, grid_size, vox_size,init_grid):
+  def __init__(self, name, grid_size, vox_size, init_grid):
     super().__init__()
     self.name = name 
     self.conv_layer = conv_layer_3d(grid_size, init_grid)
-    self.warp_layer = warp_layer_3d(grid_size, vox_size)
+    self.cumsum_layer = cumsum_layer_3d(grid_size, vox_size)
+    self.warp_layer = warp_layer_3d()
     self.axial_layer = axial_layer_3d(grid_size)
   #returns a differential grid
   def forward(self, x):
     x = self.conv_layer(x)
     x = self.axial_layer(x)
     return x
-  def warp(self, diff_grid, src_batch):
-    x = self.warp_layer(diff_grid, src_batch)
+  def cumsum(self, diff_grid):
+    x = self.cumsum_layer(diff_grid)
+    return x 
+  def warp(self, def_grid, src_batch):
+    x = self.warp_layer(def_grid, src_batch)
     return x
 

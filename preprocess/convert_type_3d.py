@@ -55,25 +55,45 @@ class DS(Dataset):
   def __len__(self):
     return len(self.data)
 
-
+#input
 #A dataset to perform the operation of expanding the size of the dataset
-#SAME AS 2D
-class Expand(Dataset):
-  def __init__(self, tar_img, expand_size=None):
-    self.tar_img = tar_img
+#if mesh is not None, the dataset will return a tuple of (voxel, mesh) (default:False)
+class Expand(Dataset): 
+  def __init__(self, voxel, expand_size=None, mesh=None):
+    self.voxel = voxel
+    self.mesh = mesh
     self.expand_size = expand_size
-    tar_list = []
-    while len(tar_img)*len(tar_list) + len(tar_img) < expand_size:
-      tar_list.append(tar_img)
+    vox_list = []
+    mesh_list = []
+    while len(voxel)*len(vox_list) + len(voxel) < expand_size:
+      vox_list.append(voxel)
+      #the case for when we are also returning mesh
+      if mesh: 
+        mesh_list.append(mesh)
     #handle for the remaining number of img to fullfill the expand_size
-    if not len(tar_img)*len(tar_list) == expand_size:
-      tail_length = expand_size - len(tar_img) * len(tar_list) 
-      tar_img, dump = random_split(tar_img, [tail_length, len(tar_img)-tail_length])
-      tar_list.append(tar_img)
-    self.tar_list = torch.utils.data.ConcatDataset(tar_list)
+    if not len(voxel)*len(vox_list) == expand_size:
+      tail_length = expand_size - len(voxel) * len(vox_list) 
+      voxel, dump = random_split(voxel, [tail_length, len(voxel)-tail_length])
+      vox_list.append(voxel)
+      #the case for when we are also returning mesh
+      if mesh:
+        mesh, dump = random_split(mesh, [tail_length, len(mesh)-tail_length])
+        mesh_list.append(mesh)
+    self.tar_list = torch.utils.data.ConcatDataset(vox_list)
+    #default for mesh list is none
+    self.mesh_list = None
+    #only initialize mesh_list if specified by tehmesh param
+    if mesh:
+      self.mesh_list = torch.utils.data.ConcatDataset(mesh_list)
   def __getitem__(self, index):
-    x = self.tar_list[index]
-    return x
+    x = self.vox_list[index]
+    #return both voxel and mesh representations if mesh is not None
+    if self.mesh:
+      y = self.mesh_list[index]
+      return x, y
+    #else, we just return the voxel representation 
+    else:
+      return x
   def __len__(self):
     return len(self.tar_list)
 

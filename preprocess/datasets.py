@@ -1,6 +1,10 @@
 import numpy as np
 from torch.utils.data import random_split, DataLoader
 from . import convert_type_3d as conv
+#Logic for preserving the voxel representation
+#We only need to preserve voxel representations for when the data set is a valid and source dataaset
+#otherwise, we will not save the voxel representation -- this functionality may change in future updates
+
 
 #given train size and val_size, return a random list of indexes for train and val set samples
 def sample_index(train_size, val_size, total_num):
@@ -31,15 +35,19 @@ def get_datasets_3d(tr, val, vox_size, pt_sample, device):
 #vox_size-size of a voxel along a single axis (int)
 #augment_times-how many times to augment train dataset
 def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, augment_times):
-  data_size = len(dataset)
+  voxel = dataset.voxel
+  data_size = len(voxel)
   tar, src = random_split(
     dataset, [int(data_size*split_proportion), data_size - int(data_size*split_proportion)])
   if settype == 1:
+    mesh = dataset.mesh
     tar = conv.Augment_3d(tar, batch_size, vox_size, val_set=True, augment_times=augment_times)
+    #the expand type of src will return both voxel and  the mesh if it is a valid dataset
+    src = conv.Expand(src, len(tar), mesh = mesh)
+
   else:
     tar = conv.Augment_3d(tar, batch_size, vox_size, augment_times=augment_times)
-  src = conv.Expand(src, len(tar))
-  
+    src = conv.Expand(src, len(tar))
   return tar, src
   
 """#given train and valid, return appropriatly augmented data for each set 
@@ -72,7 +80,7 @@ def get_dataloader(ds, batch_size, augment=False, shuffle=False):
 
 def get_val_dl_3d(val, split_proportion, batch_size, vox_size, augment_times):
   val_tar_ds, val_src_ds = aug_datasets_3d(
-    val.voxel, 1, split_proportion, batch_size, vox_size, augment_times=augment_times)
+    val, 1, split_proportion, batch_size, vox_size, augment_times=augment_times)
   val_tar_dl = get_dataloader(val_tar_ds, batch_size, augment=True, shuffle=True)
   val_src_dl = get_dataloader(val_src_ds, batch_size, shuffle=True)
   return val_tar_dl, val_src_dl
