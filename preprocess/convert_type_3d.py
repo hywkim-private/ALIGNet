@@ -32,6 +32,7 @@ class Compound_Data():
   #load the mesh data
   def __init__(self, mesh, device):
     self.mesh = mesh
+    print(f"Compound_Data: dtype mesh {mesh}")
     self.pointcloud = None
     self.voxel = None
     self.device = device
@@ -62,13 +63,18 @@ class Expand(Dataset):
   def __init__(self, voxel, expand_size=None, mesh=None):
     self.voxel = voxel
     self.mesh = mesh
+    print(f"Expand: type of mesh {self.mesh}")
+    print(f"Expand: type of voxel {self.voxel}")
+
+    #specifies if mes is to be returned or not
+    self.is_mesh = True if mesh is not None else None
     self.expand_size = expand_size
     vox_list = []
     mesh_list = []
     while len(voxel)*len(vox_list) + len(voxel) < expand_size:
       vox_list.append(voxel)
       #the case for when we are also returning mesh
-      if mesh: 
+      if self.is_mesh: 
         mesh_list.append(mesh)
     #handle for the remaining number of img to fullfill the expand_size
     if not len(voxel)*len(vox_list) == expand_size:
@@ -76,27 +82,38 @@ class Expand(Dataset):
       voxel, dump = random_split(voxel, [tail_length, len(voxel)-tail_length])
       vox_list.append(voxel)
       #the case for when we are also returning mesh
-      if mesh:
+      if self.is_mesh:
         mesh, dump = random_split(mesh, [tail_length, len(mesh)-tail_length])
         mesh_list.append(mesh)
-    self.tar_list = torch.utils.data.ConcatDataset(vox_list)
-    #default for mesh list is none
-    self.mesh_list = None
+    self.vox_list = torch.utils.data.ConcatDataset(vox_list)
     #only initialize mesh_list if specified by tehmesh param
-    if mesh:
+    if self.is_mesh:
       self.mesh_list = torch.utils.data.ConcatDataset(mesh_list)
+      print(f"Expand: type of mesh_list {self.mesh_list}")
+      print(f"Expand: type of vox_list {self.vox_list}")
+
   def __getitem__(self, index):
     x = self.vox_list[index]
     #return both voxel and mesh representations if mesh is not None
-    if self.mesh:
+    if self.is_mesh:
       y = self.mesh_list[index]
       return x, y
     #else, we just return the voxel representation 
     else:
       return x
   def __len__(self):
-    return len(self.tar_list)
-
+    return len(self.vox_list)
+    
+  def collate_fn(self, batch):
+    if self.is_mesh:
+      vox, mesh = zip(*batch)
+      vox = torch.stack(list(vox), dim=0)
+      #since we can't use torch.stack for Meshes datatype, we will return a batch of list
+      mesh = list(mesh)
+      return vox, mesh
+    else: 
+      vox = torch.stack(batch,dim=0)
+      return vox
 #given source and target img dataset, return a dict of augmented datasets
 #if val_set is set to True, the loader returns one (identical) element
 #for 3d, we will only support random mask operation

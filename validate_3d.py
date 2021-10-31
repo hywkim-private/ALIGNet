@@ -7,9 +7,10 @@ import skimage
 import matplotlib
 import matplotlib.pyplot as plt
 from pytorch3d import ops
+from pytorch3d.structures import Meshes 
 from preprocess import convert_type_3d as conv
 import config_3d
-from model import loss_3d
+from model import loss_3d, ops_3d
 from utils.vis_3d import visualize_results_3d
 
 #TODO: THE MESH REPRESENTATION OF THE INPUT DATA IS NOT STORED IN DATALOADERS IN THE FIRST PLACE
@@ -24,9 +25,24 @@ from utils.vis_3d import visualize_results_3d
 #TODO: ****MAKE THE VISUALIZE MESH FUNCTIONALITY WORK******
 #THE PROBLEM FOR VISUALIZATION MIGHT BE SOLVED BY USING THE PADDED LIST BUT NOT SURE
 #FIRST, FIX THE UNIT TEST CODE SNIPPET IN GOOGLE COLAB
-#MAKE SURE THE DEFORMED_MESH IS CONVERTED BACK TO TENSOR.TO(DEVICE) BEFORE CALLING ON THE VISUALIZATION FUNCTION
 
+#TODO: MAKE SURE THE VOXEL VISUALIZATION/PT VIS WORKS
+#THE INTERPOLATION IS GIVING FUCKING WEIRD RESULTS=>CHECK THE INTERPOLATION FUNCTION (ACTUALLY THIS MIGHT BE FROM LACK OF TRAINING-->SOME LOOKS GOOD)
+#TAR_EST IN MESH VISUALIZATION, SAMPLED FROM PT, LOOKS  WEIRD. => MAYBE ALSO JUST GET DIRECTLY FROM THE DATALOADER
+#UNIFY THE FUNCTIONALITY FOR VISUALIZING MESH => DON'T GIVE TOO MANY OPTIONS, LIKE VISUALIZING FROM FULLY SAMPLED-POINTS MESHS=>WE DON'T NEED THEM HONESTLY
 
+#given a list of batch mesh objects, flatten them into Mesh() datastructure
+#we need this function because torch.Tensor object doesn't support Mesh objects 
+def flatten_to_mesh(mesh_list):
+  for mesh in mesh_list:
+    for m in mesh:
+      vert = torch.stack(m.verts_list(), dim=0)[0]
+      face = torch.stack(m.faces_list(), dim=0)[0]
+      vert_list.append(vert)
+      face_list.append(face)
+  flat_mesh = Meshes(vert_list, face_list)
+  return flat_mesh
+  
 #this class stores necessary in order to check and validate results of the model
 class result_checker_3d():
   def __init__(self, model, valid_tar, valid_src):
@@ -50,14 +66,26 @@ class result_checker_3d():
     self.src_mesh_ori = None
     if get_mesh: 
       tar_list, src_list, est_list, diff_grid_list, def_grid_list, avg_loss, src_mesh_list = validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE, get_mesh)
-      self.src_mesh_ori = src_mesh_list
+      src_mesh_ori_list = []
+      #we need "list of verts and faces" to create Mesh object that stores all the meshes we have
+      for mesh in src_mesh_list:
+        #make src_mesh_list to a Mesh datatype
+        vert_list = []
+        face_list = []
+        for m in mesh:
+          vert = torch.stack(m.verts_list(), dim=0)[0]
+          face = torch.stack(m.faces_list(), dim=0)[0]
+          vert_list.append(vert)
+          face_list.append(face)
+        src_mesh_ori = Meshes(vert_list, face_list)
+        src_mesh_ori_list.append(src_mesh_ori)
+      self.src_mesh_ori = src_mesh_ori_list
     else:
       tar_list, src_list, est_list, diff_grid_list, def_grid_list, avg_loss= validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE)
     self.avg_loss = avg_loss
     self.tar_list = tar_list
     self.src_list = src_list
     self.est_list = est_list
-    #TODO: estimation in mesh form -- apply deformation directly to the mesh
     self.est_mesh_list = None 
     self.diff_grid_list = diff_grid_list
     self.def_grid_list = def_grid_list
@@ -69,17 +97,40 @@ class result_checker_3d():
   #apply the deformation directly to mesh, and save it in est_mesh_list
   def warp_mesh(self):
     #if the src_mesh list doesn't exist, raise error
-    if src_mesh_list == None:
+    if self.src_mesh_ori == None:
       print("result_checker_3d.warp_mesh: ERROR-src_mesh_list is not initialized."
       "Make sure to call update with get_mesh=True in order to retrieve the original mesh representation of source dataset.")
       return
+    #in order for warp_mesh to work in sync with visualization, we first need to interpolate meshes individually,
+    #then append them altogether in the Mesh datatype
     else: 
       def_mesh_list = []
-      for mesh, def_grid in zip(self.src_mesh_list, self.def_grid_list):
-        mesh = npmesh.to(CPU)
-        deformed_mesh = interpolate_3d_mesh(mesh, def_grid, config_3d.VOX_SIZE)
+      for mesh, def_grid in zip(self.src_mesh_ori, self.def_grid_list):
+        vertice_list = []
+        face_list = []
+        #for each batch of inputs
+        for i in range(len(mesh)):
+          #get verts and faces for a single mesh
+          m = mesh[i]
+          m_verts = m.verts_list()[0]
+          m_faces = m.faces_list()[0]
+          m_faces = np.stack(m_faces)
+          m_verts = np.stack(m_verts)
+          g = def_grid[i]
+          g = g.detach().numpy()
+          #interpolate the single mesh
+          deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g, config_3d.VOX_SIZE)
+          #make faces and verts into Tensors so it can make up for the Mesh datatype
+          m_faces = torch.Tensor(m_faces)
+          deformed_verts = torch.Tensor(deformed_verts)
+          #get the "list of tensors" for verts and faces
+          vertice_list.append(deformed_verts)
+          face_list.append(m_faces)
+        #turn list of faces and verts tensors into Mesh datatype 
+        deformed_mesh = Meshes(vertice_list, face_list)
         def_mesh_list.append(deformed_mesh)
-      self.deformed_mesh = def_mesh_list
+    #deformed_mesh is a list of meshes, grouped in batches
+    self.deformed_mesh = def_mesh_list
   #after updating the voxelized results, get their mesh representations
   #save lists of voxelized tar, src, est data
   def get_mesh_from_vox(self):
@@ -90,6 +141,7 @@ class result_checker_3d():
     self.src_mesh = []
     self.est_mesh = []
     for i in range(len(self.tar_list)):
+      #tar_mesh, src_mesh, est_mesh consists of lists of batches
       self.tar_mesh.append(ops.cubify(self.tar_list[i], 1))
       self.src_mesh.append(ops.cubify(self.src_list[i], 1))
       self.est_mesh.append(ops.cubify(self.est_list[i], 1))
@@ -118,8 +170,10 @@ class result_checker_3d():
       visualize_results_3d(self.src_mesh, self.tar_mesh, self.est_mesh, datatype, batch_index, sample, save_path)
     elif datatype == 2:
       visualize_results_3d(self.src_pt, self.tar_pt, self.est_pt, datatype, batch_index, sample, save_path)
-    elif dataype == 3: 
-      visualize_results_3d(self.src_mesh_ori, self.tar_mesh, self.deformed_mesh, datatype, batch_index, sample, save_path)
+    elif datatype == 3: 
+      visualize_results_3d(self.src_mesh_ori, self.tar_mesh, self.deformed_mesh, 1, batch_index, sample, save_path)
+      
+     
 
   #update the loss value after running the model
   #print the graph of the current loss results->save to path if specified
@@ -174,7 +228,8 @@ def validate_dl_3d(model, source_dl, target_dl, grid_size, get_mesh=False):
     if get_mesh:
       source, source_mesh = next(source_iter)
       source_mesh_list.append(source_mesh)
-    source = next(source_iter)
+    else:
+      source = next(source_iter)
     target = torch.FloatTensor(target).squeeze(dim=1).to(config_3d.DEVICE)
     source = torch.FloatTensor(source).squeeze(dim=1).to(config_3d.DEVICE)
     input = torch.stack([source, target])

@@ -65,7 +65,6 @@ def interpolate_3d_mesh(mesh, grid, vox_size):
   for i in range(len(x_verts)):
     vert = np.array([x_verts[i], y_verts[i], z_verts[i]])
     mesh_list.append(vert)
-    #print(vert)
   deformed_mesh = np.stack(mesh_list, axis=0)
   return deformed_mesh
 

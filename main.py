@@ -49,9 +49,9 @@ def train_model(args, model_path):
       obj = preprocess.io_3d.load_obj(result_check_path)
     else:
       result_check = validate_3d.result_checker_3d(model, val_tar, val_src)
-  run_3d.train_3d(model, model_path, iter_t, tr, args.name,  train_mode=config_3d.TRAIN_MODE, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
-  torch.save(model.state_dict(), config_3d.MODEL_PATH + args.name +'/'+ args.name+'.pt')
-  preprocess.io_3d.save_obj(result_check, result_check_path)
+  run_3d.train_3d(model, model_path, iter_t, tr, args.name, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
+  #model is already saved in the run operation
+  io_3d.save_obj(result_check, result_check_path)
 
 if __name__ == '__main__':
   
@@ -143,6 +143,7 @@ if __name__ == '__main__':
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/loss_graphs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/images')
     tr, val = load_ds()
+    print(f"Datatype of tr: {type(tr)}")
     train_model(args, model_path)
     
   #common operation for train and valid 
@@ -160,7 +161,7 @@ if __name__ == '__main__':
   if args.command == 'train':
     #load the target model
     model_obj_path = model_path + args.name + '.pt'
-    model = preprocess.io_3d.load_model(model_obj_path, args.name, config_3d.GRID_SIZE).to(config_3d.DEVICE)
+    model = torch.load(model_obj_path).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
     tr, val = load_ds()
     train_model(args, model_path)
@@ -174,21 +175,34 @@ if __name__ == '__main__':
     image_path = io_3d.latest_filename(image_path)
     #load the neccessary datasets
     tr, val = load_ds()
+
     #get the target and val sets
-    val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-      val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
-    result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
-    result_checker.update()
     #visualize if specified
     #pointcloud
     if args.visualize == 'pointcloud':
-      result_checker.get_pointcloud(config_3d.PT_SAMPLE)
+      val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
+      result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
+      result_checker.update()
+      result_checker.get_pointcloud_from_mesh(config_3d.PT_SAMPLE)
       result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
-    #mesh--NOT WORKING (RETURN ERROR FOR NOW)
+    #visualize mesh
     elif args.visualize == 'mesh':
-      print("ERROR: MESH VISUALIZATION IS CURRENTLY UNDER DEVELOPMENT--USE A DIFFERENT DATATYPE TO VISUALIZE")
+      #for mesh visualization, we need to set get_mesh=True
+      val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_mesh=True)
+      result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
+      #we will retrieve the original src mesh representation and apply deformation directly
+      result_checker.update(get_mesh=True)
+      result_checker.warp_mesh()
+      result_checker.get_mesh_from_vox()
+      result_checker.visualize(datatype=3, sample=config_3d.NUM_SAMPLE, save_path=image_path)
     #voxel
     else:
+      val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
+      result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
+      result_checker.update()
       result_checker.visualize(datatype=0, sample=config_3d.NUM_SAMPLE, save_path=image_path)
  
     

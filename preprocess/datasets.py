@@ -1,5 +1,6 @@
 import numpy as np
-from torch.utils.data import random_split, DataLoader
+
+from torch.utils.data import random_split, DataLoader, Subset, ConcatDataset
 from . import convert_type_3d as conv
 #Logic for preserving the voxel representation
 #We only need to preserve voxel representations for when the data set is a valid and source dataaset
@@ -12,7 +13,18 @@ def sample_index(train_size, val_size, total_num):
   index_train = np.random.choice(pool, size=train_size)
   pool = np.delete(pool, index_train)
   index_val = np.random.choice(pool, size=val_size)
+  index_train = np.sort(index_train)
+  index_val = np.sort(index_val)
   return index_train, index_val
+
+#helper function for converting mesh datatype samples into Tensors of Meshes
+def mesh_to_tensor(meshes, idx):
+  mesh_list = []
+  for i in idx:
+    mesh = meshes.__getitem__(i)
+    mesh_list.append(mesh)
+  mesh_ts = ConcatDataset(mesh_list)
+  return mesh_ts
 
 #convert the types of datasets
 #helper function for aug_datasets_3d
@@ -34,21 +46,49 @@ def get_datasets_3d(tr, val, vox_size, pt_sample, device):
 #batch_size-size of batch
 #vox_size-size of a voxel along a single axis (int)
 #augment_times-how many times to augment train dataset
-def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, augment_times):
+#get_mesh-get the original mesh representation of the src dataset
+#(even if ds is valid set, we need to optionalize get_mesh since the set may be used soley for loss-checking)
+def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, augment_times, get_mesh=False):
   voxel = dataset.voxel
   data_size = len(voxel)
-  tar, src = random_split(
-    dataset, [int(data_size*split_proportion), data_size - int(data_size*split_proportion)])
+  tar_idx, src_idx = sample_index(int(data_size*split_proportion),data_size - int(data_size*split_proportion), data_size)
+  #the Mesh.__getitem__ doesn't support np type index inputs ==> list works
+  src_idx = src_idx.tolist()
+  tar_vox = Subset(voxel, tar_idx)
+  src_vox = Subset(voxel, src_idx)
+  #augment the valid dataset
+  #the main difference is that val ds holds the original mesh representation of the src datatset
   if settype == 1:
-    mesh = dataset.mesh
-    tar = conv.Augment_3d(tar, batch_size, vox_size, val_set=True, augment_times=augment_times)
+    tar = conv.Augment_3d(tar_vox, batch_size, vox_size, val_set=True, augment_times=augment_times)
     #the expand type of src will return both voxel and  the mesh if it is a valid dataset
-    src = conv.Expand(src, len(tar), mesh = mesh)
+    #in this case src is a dataset that returns both src_voxel and src_mesh
+    if get_mesh:
+      mesh = dataset.mesh
+      print(len(mesh.__getitem__(src_idx)))
+      
+      src_mesh = mesh_to_tensor(mesh, src_idx)
+      #src_mesh = Subset(mesh, src_idx)
+      #src_mesh = mesh.__getitem__(src_idx)
+      
+      
+      #TODO::::FIX THIS AND EVERYTHIN G WILL WORK
 
+      print(len(tar_vox[0]))
+      print(len(src_mesh[0]))
+
+      
+      
+      
+      #src will be a dataloader that returns both target and original src mesh
+      src = conv.Expand(src_vox, len(tar), mesh = src_mesh)
+    else:
+      #if get mesh not set, just get the voxel
+      src = conv.Expand(src_vox, len(tar))
+    return tar, src
   else:
-    tar = conv.Augment_3d(tar, batch_size, vox_size, augment_times=augment_times)
-    src = conv.Expand(src, len(tar))
-  return tar, src
+    tar = conv.Augment_3d(tar_vox, batch_size, vox_size, augment_times=augment_times)
+    src = conv.Expand(src_vox, len(tar))
+    return tar, src
   
 """#given train and valid, return appropriatly augmented data for each set 
 def aug_train_valid_3d(train_set, valid_set, split_proportion_tr, split_proportion_batch_size, vox_size, augment_times_tr, augment_times_src):
@@ -72,15 +112,13 @@ def aug_train_valid_3d(train_set, valid_set, split_proportion_tr, split_proporti
 #SAME as 2d
 def get_dataloader(ds, batch_size, augment=False, shuffle=False):
   SHUFFLE = shuffle 
-  if augment:
-    dl = DataLoader(ds, batch_size=batch_size, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
-  else:
-    dl = DataLoader(ds, batch_size=batch_size, shuffle=SHUFFLE)  
+  dl = DataLoader(ds, batch_size=batch_size, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
   return dl
-
-def get_val_dl_3d(val, split_proportion, batch_size, vox_size, augment_times):
+  
+#the param get_mesh specifies whether or not to get the original mesh representation of the src dataset
+def get_val_dl_3d(val, split_proportion, batch_size, vox_size, augment_times, get_mesh=False):
   val_tar_ds, val_src_ds = aug_datasets_3d(
-    val, 1, split_proportion, batch_size, vox_size, augment_times=augment_times)
+    val, 1, split_proportion, batch_size, vox_size, augment_times=augment_times, get_mesh = get_mesh)
   val_tar_dl = get_dataloader(val_tar_ds, batch_size, augment=True, shuffle=True)
   val_src_dl = get_dataloader(val_src_ds, batch_size, shuffle=True)
   return val_tar_dl, val_src_dl

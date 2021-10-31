@@ -27,7 +27,6 @@ def visualize_pointclouds(pointcloud):
   )])
   fig.show()
 
-
 #visualize voxel (single voxel)
 #voxel: shape(x, y, z)
 def visualize_voxels(voxel):
@@ -36,7 +35,7 @@ def visualize_voxels(voxel):
   ax.voxels(voxel, edgecolor="k")
   plt.show()
 
-def visualize_results_3d_vox(src_batch, tar_batch, tar_est, index):
+def visualize_results_3d_vox(src_batch, tar_batch, tar_est, batch_index, index):
   for i in index:
     fig = plt.figure()
     ax1 = fig.add_subplot(221,projection='3d')
@@ -52,46 +51,54 @@ def visualize_results_3d_vox(src_batch, tar_batch, tar_est, index):
     fig.tight_layout() 
     ax3.voxels(tar_est[i],  edgecolor='k')
 
-#BUG: Not working (though mesh data are sound)
-#+random sampling from mesh dataset not working
-def visualize_results_3d_mesh(src_batch, tar_batch, tar_est, index):
-  print(f"visualize_results_3d_mesh: shape of src_batch-{len(src_batch)}")
-  print(f"visualize_results_3d_mesh: index-{index}")
-  print(f"visualize_results_3d_mesh: src_batch[0]: {src_batch[0]}")
-  print(f"visualize_results_3d_mesh: src_batch type: {type(src_batch)}")
-  for i in range(len(src_batch)-1):
-    src = src_batch[0]
-    tar = tar_batch[0]
-    est = tar_est[0]
-    print(f"visualize_results_3d_mesh: {src.verts_list()}")
+#visualize sets of src, tar, and est meshes according to the sampled index
+#input
+#src_batch, tar_batch, tar_est: pytorch3d mesh datatype
+#index: list of sample indexes
+def visualize_results_3d_mesh(src_batch, tar_batch, tar_est, batch_index, index):
+  print(f"length of the tar_batch: {len(src_batch)}")
+  print(f"length of the tar_batch: {len(tar_est)}")
+  #access the specific batch to visualize using the batch_index
+  src_verts = src_batch[batch_index].verts_list()
+  print(f"length of the src_verts: {len(src_verts)}")
+  src_faces = src_batch[batch_index].faces_list()
+  tar_verts = tar_batch[batch_index].verts_list()
+  tar_faces = tar_batch[batch_index].faces_list()
+  est_verts = tar_est[batch_index].verts_list()
+  est_faces = tar_est[batch_index].faces_list()
+  for i in index:
+    src_vert = src_verts[i]
+    src_face = src_faces[i]
+    tar_vert = tar_verts[i]
+    tar_face = tar_faces[i]
+    est_vert = est_verts[i]
+    est_face = est_faces[i]
     fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'mesh3d'}, {'type': 'mesh3d'}],
            [{'type': 'mesh3d'}, {'type': 'mesh3d'}]])
     fig.add_trace(
       go.Mesh3d(
-        x=torch.stack(src.verts_list(), dim=0)[:,0], y=torch.stack(src.verts_list(), dim=0)[:,1], z=torch.stack(src.verts_list(), dim=0)[:,2],
-        i=torch.stack(src.faces_list(), dim=0)[:,0], j=torch.stack(src.faces_list(), dim=0)[:,1], k=torch.stack(src.faces_list(), dim=0)[:,2],
+        x=src_vert[:,0], y=src_vert[:,1], z=src_vert[:,2],
+        i=src_face[:,0], j=src_face[:,1], k=src_face[:,2],
       ),
       row=1, col=1
     )
     fig.add_trace(
       go.Mesh3d(
-        x=torch.stack(tar.verts_list(), dim=0)[:,0], y=torch.stack(tar.verts_list(), dim=0)[:,1], z=torch.stack(tar.verts_list(), dim=0)[:,2],
-        i=torch.stack(tar.faces_list(), dim=0)[:,0], j=torch.stack(tar.faces_list(), dim=0)[:,1], k=torch.stack(tar.faces_list(), dim=0)[:,2],
+        x=tar_vert[:,0], y=tar_vert[:,1], z=tar_vert[:,2],
+        i=tar_face[:,0], j=tar_face[:,1], k=tar_face[:,2],
       ),
       row=2, col=1
     )
     fig.add_trace(
       go.Mesh3d(
-        x=torch.stack(est.verts_list(), dim=0)[:,0], y=torch.stack(est.verts_list(), dim=0)[:,1], z=torch.stack(est.verts_list(), dim=0)[:,2],
-        i=torch.stack(est.faces_list(), dim=0)[:,0], j=torch.stack(est.faces_list(), dim=0)[:,1], k=torch.stack(est.faces_list(), dim=0)[:,2],
+        x=est_vert[:,0], y=est_vert[:,1], z=est_vert[:,2],
+        i=est_face[:,0], j=est_face[:,1], k=est_face[:,2],
       ),
       row=1, col=2
     )
-    #fig.update_layout(height=600, width=800, title_text="source, target, and target_estimate meshes")
-    fig.show()
-    #break
+  return fig 
 
-def visualize_results_3d_pt(src_batch, tar_batch, tar_est, index):
+def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
   for i in index:
     src = src_batch[i]
     tar = tar_batch[i]
@@ -144,33 +151,36 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, index):
       row=1, col=2
     )
     fig.update_layout(height=600, width=800, title_text="source, target, and target_estimate pointclouds")
-    fig.show()
+  
+  return fig 
   
   
 #visualize the results given source, target, and target estimate images
 #save_img is the path to save the img
 #datatype: 0-voxel, 1-mesh, 2-pointcloud
 def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index=0, sample=None, save_path=None):
-  src_batch = src_batch[batch_index]
-  tar_batch = tar_batch[batch_index]
-  tar_est = tar_est[batch_index]
-  batch = len(src_batch)
-  index = np.arange(batch-1)
+  
+  batch_len = len(tar_batch[0])
+  index = np.arange(batch_len)
   #sample specific number of elements from the batch if specified
   if sample:
-    index = np.random.choice(index, sample)
+    index = np.random.choice(index, sample, replace=False)
   index = np.sort(index)
   #the case for when datatype is voxel
   if datatype==0:
-    visualize_results_3d_vox(src_batch, tar_batch, tar_est, index)
+    visualize_results_3d_vox(src_batch, tar_batch, tar_est, batch_index, index)
   elif datatype==1:
-    visualize_results_3d_mesh(src_batch, tar_batch, tar_est, index)
+    fig = visualize_results_3d_mesh(src_batch, tar_batch, tar_est, batch_index,  index)
   elif datatype==2:
-    visualize_results_3d_pt(src_batch, tar_batch, tar_est, index)
-
-  if save_path:
+    visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index)
+  #datatype 0  uses the matplotlib library
+  if save_path and datatype == 0:
     print(f"Visualize_results_3d: Image saved to path {save_path}")
     plt.savefig(save_path, format='png')
+  #datatype 1 and 2 uses a plotly dependency
+  elif save_path:
+    print(f"Visualize_results_3d: Image saved to path {save_path}")
+    fig.write_image(save_path + '.png')
   return
 
 
