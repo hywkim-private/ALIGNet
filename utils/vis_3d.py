@@ -36,75 +36,83 @@ def visualize_voxels(voxel):
   plt.show()
 
 def visualize_results_3d_vox(src_batch, tar_batch, tar_est, batch_index, index):
-  for i in index:
-    fig = plt.figure()
-    ax1 = fig.add_subplot(221,projection='3d')
+  src_batch = src_batch[batch_index]
+  tar_batch = tar_batch[batch_index]
+  tar_est = tar_est[batch_index]
+  fig = plt.figure(figsize=(15*len(index), 45))
+  for idx,i in enumerate(index):
+    ax1 = fig.add_subplot(len(index), 3, idx*3+1,projection='3d')
     ax1.set_title('Source Voxel')
     fig.tight_layout() 
     ax1.voxels(src_batch[i], edgecolor='k')
-    ax2 = fig.add_subplot(222,projection='3d')
+    ax2 = fig.add_subplot(len(index), 3, idx*3+2,projection='3d')
     ax2.set_title('Target Voxel')
     fig.tight_layout() 
     ax2.voxels(tar_batch[i], edgecolor='k')
-    ax3 = fig.add_subplot(223,projection='3d')
+    ax3 = fig.add_subplot(len(index), 3, idx*3+3,projection='3d')
     ax3.set_title('Estimated Voxel')
     fig.tight_layout() 
     ax3.voxels(tar_est[i],  edgecolor='k')
+    fig.show()
+  return fig
 
 #visualize sets of src, tar, and est meshes according to the sampled index
 #input
 #src_batch, tar_batch, tar_est: pytorch3d mesh datatype
 #index: list of sample indexes
 def visualize_results_3d_mesh(src_batch, tar_batch, tar_est, batch_index, index):
-  print(f"length of the tar_batch: {len(src_batch)}")
-  print(f"length of the tar_batch: {len(tar_est)}")
   #access the specific batch to visualize using the batch_index
   src_verts = src_batch[batch_index].verts_list()
-  print(f"length of the src_verts: {len(src_verts)}")
   src_faces = src_batch[batch_index].faces_list()
   tar_verts = tar_batch[batch_index].verts_list()
   tar_faces = tar_batch[batch_index].faces_list()
   est_verts = tar_est[batch_index].verts_list()
   est_faces = tar_est[batch_index].faces_list()
-  for i in index:
+  spec_rows = [{'type':'mesh3d'}] * 3
+  spec = [spec_rows] * len(index)
+  fig = make_subplots(rows=len(index), cols=3, specs=spec)
+  for idx,i in enumerate(index):
     src_vert = src_verts[i]
     src_face = src_faces[i]
     tar_vert = tar_verts[i]
     tar_face = tar_faces[i]
     est_vert = est_verts[i]
     est_face = est_faces[i]
-    fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'mesh3d'}, {'type': 'mesh3d'}],
-           [{'type': 'mesh3d'}, {'type': 'mesh3d'}]])
     fig.add_trace(
       go.Mesh3d(
         x=src_vert[:,0], y=src_vert[:,1], z=src_vert[:,2],
         i=src_face[:,0], j=src_face[:,1], k=src_face[:,2],
       ),
-      row=1, col=1
+      row=idx+1, col=1
     )
     fig.add_trace(
       go.Mesh3d(
         x=tar_vert[:,0], y=tar_vert[:,1], z=tar_vert[:,2],
         i=tar_face[:,0], j=tar_face[:,1], k=tar_face[:,2],
       ),
-      row=2, col=1
+      row=idx+1, col=2
     )
     fig.add_trace(
       go.Mesh3d(
         x=est_vert[:,0], y=est_vert[:,1], z=est_vert[:,2],
         i=est_face[:,0], j=est_face[:,1], k=est_face[:,2],
       ),
-      row=1, col=2
+      row=idx+1, col=3
     )
+  fig.update_layout(height=300*len(index), width=900, title_text="Source, Target, and Target Estimate Mesh")
   return fig 
 
 def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
-  for i in index:
+  src_batch = src_batch[batch_index]
+  tar_batch = tar_batch[batch_index]
+  tar_est = tar_est[batch_index]
+  spec_rows = [{'type':'scatter3d'}] * 3
+  spec = [spec_rows] * len(index)
+  fig = make_subplots(rows=len(index), cols=3, specs=spec)
+  for idx, i in enumerate(index):
     src = src_batch[i]
     tar = tar_batch[i]
     est = tar_est[i]
-    fig = make_subplots(rows=2, cols=2, specs=[[{'type': 'scatter3d'}, {'type': 'scatter3d'}],
-           [{'type': 'scatter3d'}, {'type': 'scatter3d'}]])
     fig.add_trace(
       go.Scatter3d(
         name='Source',
@@ -118,7 +126,7 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
             opacity=0.8
         )
       ),
-      row=1, col=1
+      row=idx+1, col=1
     )
     fig.add_trace(
       go.Scatter3d(
@@ -133,7 +141,7 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
             opacity=0.8
         )
       ),
-      row=2, col=1
+      row=idx+1, col=2
     )
     fig.add_trace(
       go.Scatter3d(
@@ -148,10 +156,9 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
             opacity=0.8
         )
       ),
-      row=1, col=2
+      row=idx+1, col=3
     )
-    fig.update_layout(height=600, width=800, title_text="source, target, and target_estimate pointclouds")
-  
+  fig.update_layout(height=300*len(index), width=900, title_text="Source, Target, and Target_Estimate Pointclouds")
   return fig 
   
   
@@ -172,7 +179,7 @@ def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index
   elif datatype==1:
     fig = visualize_results_3d_mesh(src_batch, tar_batch, tar_est, batch_index,  index)
   elif datatype==2:
-    visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index)
+    fig = visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index)
   #datatype 0  uses the matplotlib library
   if save_path and datatype == 0:
     print(f"Visualize_results_3d: Image saved to path {save_path}")
@@ -180,7 +187,7 @@ def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index
   #datatype 1 and 2 uses a plotly dependency
   elif save_path:
     print(f"Visualize_results_3d: Image saved to path {save_path}")
-    fig.write_image(save_path + '.png')
+    fig.write_image(save_path)
   return
 
 

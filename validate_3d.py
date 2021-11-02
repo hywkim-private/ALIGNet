@@ -31,17 +31,12 @@ from utils.vis_3d import visualize_results_3d
 #TAR_EST IN MESH VISUALIZATION, SAMPLED FROM PT, LOOKS  WEIRD. => MAYBE ALSO JUST GET DIRECTLY FROM THE DATALOADER
 #UNIFY THE FUNCTIONALITY FOR VISUALIZING MESH => DON'T GIVE TOO MANY OPTIONS, LIKE VISUALIZING FROM FULLY SAMPLED-POINTS MESHS=>WE DON'T NEED THEM HONESTLY
 
-#given a list of batch mesh objects, flatten them into Mesh() datastructure
-#we need this function because torch.Tensor object doesn't support Mesh objects 
-def flatten_to_mesh(mesh_list):
-  for mesh in mesh_list:
-    for m in mesh:
-      vert = torch.stack(m.verts_list(), dim=0)[0]
-      face = torch.stack(m.faces_list(), dim=0)[0]
-      vert_list.append(vert)
-      face_list.append(face)
-  flat_mesh = Meshes(vert_list, face_list)
-  return flat_mesh
+
+#MAKE SURE ALL IMAGES ARE ALIGNED PROPERLY=>CHECK AXIS
+#FIX THE PT MASK FUNCTION IN GOOGLE COLAB
+#SEE POINTCLOUD VISUALIZATION=>SOMETHING FUCKING WEIRD GOING ON
+#FIND THE APPROPRIATE "CONVERSION RANGE" FROM (0,32) TO (-1,1) AND FIX THE MASK, INTERPOLATION FUNCTION
+#CHECK THE VOXELIZATION SCHEME => TURN OFF NORMALIZATON
   
 #this class stores necessary in order to check and validate results of the model
 class result_checker_3d():
@@ -150,14 +145,14 @@ class result_checker_3d():
   def get_pointcloud_from_mesh(self, num_samples):
     if self.mesh == False:
       #call get_mesh if it hasn't been called
-      self.get_mesh()
+      self.get_mesh_from_vox()
     self.tar_pt =[]
     self.src_pt =[]
     self.est_pt =[]
     for i in range(len(self.tar_list)):
-      self.tar_pt.append(conv.PointCloud(self.tar_mesh[i], num_samples=num_samples))
-      self.src_pt.append(conv.PointCloud(self.src_mesh[i], num_samples=num_samples))
-      self.est_pt.append(conv.PointCloud(self.est_mesh[i], num_samples=num_samples))
+      self.tar_pt.append(conv.PointCloud(self.tar_mesh[i], num_samples, config_3d.DEVICE))
+      self.src_pt.append(conv.PointCloud(self.src_mesh[i], num_samples, config_3d.DEVICE))
+      self.est_pt.append(conv.PointCloud(self.est_mesh[i], num_samples, config_3d.DEVICE))
 
   #visualize the results in images 
   #batch_index specifies which batch to visualize
@@ -166,14 +161,11 @@ class result_checker_3d():
   def visualize(self, datatype=0, batch_index=0, sample=None, save_path=None):
     if datatype == 0:
       visualize_results_3d(self.src_list, self.tar_list, self.est_list, datatype, batch_index, sample, save_path)
-    elif datatype == 1:
-      visualize_results_3d(self.src_mesh, self.tar_mesh, self.est_mesh, datatype, batch_index, sample, save_path)
+    elif datatype == 1: 
+      visualize_results_3d(self.src_mesh_ori, self.tar_mesh, self.deformed_mesh, datatype, batch_index, sample, save_path)
     elif datatype == 2:
       visualize_results_3d(self.src_pt, self.tar_pt, self.est_pt, datatype, batch_index, sample, save_path)
-    elif datatype == 3: 
-      visualize_results_3d(self.src_mesh_ori, self.tar_mesh, self.deformed_mesh, 1, batch_index, sample, save_path)
-      
-     
+   
 
   #update the loss value after running the model
   #print the graph of the current loss results->save to path if specified

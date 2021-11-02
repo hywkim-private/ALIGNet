@@ -185,7 +185,7 @@ if __name__ == '__main__':
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
       result_checker.get_pointcloud_from_mesh(config_3d.PT_SAMPLE)
-      result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+      result_checker.visualize(datatype=2, sample=config_3d.NUM_SAMPLE, save_path=image_path)
     #visualize mesh
     elif args.visualize == 'mesh':
       #for mesh visualization, we need to set get_mesh=True
@@ -196,7 +196,7 @@ if __name__ == '__main__':
       result_checker.update(get_mesh=True)
       result_checker.warp_mesh()
       result_checker.get_mesh_from_vox()
-      result_checker.visualize(datatype=3, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+      result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
     #voxel
     else:
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
