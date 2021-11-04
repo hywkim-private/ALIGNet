@@ -103,9 +103,9 @@ def visualize_results_3d_mesh(src_batch, tar_batch, tar_est, batch_index, index)
   return fig 
 
 def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
-  src_batch = src_batch[batch_index]
-  tar_batch = tar_batch[batch_index]
-  tar_est = tar_est[batch_index]
+  src_batch = src_batch[batch_index].points_list()
+  tar_batch = tar_batch[batch_index].points_list()
+  tar_est = tar_est[batch_index].points_list()
   spec_rows = [{'type':'scatter3d'}] * 3
   spec = [spec_rows] * len(index)
   fig = make_subplots(rows=len(index), cols=3, specs=spec)
@@ -162,11 +162,78 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
   return fig 
   
   
+#customized visualization-visualize in the form of src(Mesh), tar(PointClouds), tar-est(Mesh)
+#input
+#src_mesh, tar_pt, tar_est_mesh
+#batch_index: the index of batch from which to sample data
+#index: list of sample indexes
+def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, batch_index, index):
+  
+  src_mesh = src_mesh[batch_index]
+  tar_pt = tar_pt[batch_index]
+  tar_est_mesh = tar_est_mesh[batch_index]
+  src_mesh_verts = src_mesh.verts_list()
+  src_mesh_faces = src_mesh.faces_list()
+  tar_pt_points = tar_pt.points_list()
+  tar_est_mesh_verts = tar_est_mesh.verts_list()
+  tar_est_mesh_faces = tar_est_mesh.faces_list()
+  spec_rows = [{'type':'mesh3d'}, {'type':'scatter3d'}, {'type':'mesh3d'}] 
+  spec = [spec_rows] * len(index)
+  fig = make_subplots(rows=len(index), cols=3, specs=spec)
+  for idx, i in enumerate(index):
+    src_vert = src_mesh_verts[i]
+    src_face = src_mesh_faces[i]
+    tar_pt_point = tar_pt_points[i]
+    tar_est_mesh_vert = tar_est_mesh_verts[i]
+    tar_est_mesh_face = tar_est_mesh_faces[i]
+    fig.add_trace(
+      go.Mesh3d(
+        name='Source',
+        x=src_vert[:,0],
+        y=src_vert[:,1],
+        z=src_vert[:,2],
+        i=src_face[:,0],
+        j=src_face[:,1],
+        k=src_face[:,2],
+      ),
+      row=idx+1, col=1
+    )
+    fig.add_trace(
+      go.Scatter3d(
+        name='Target',
+        x=tar_pt_point[:,0],
+        y=tar_pt_point[:,1],
+        z=tar_pt_point[:,2],
+        mode='markers',
+        marker=dict(
+            size=1,
+            colorscale='Viridis',   # choose a colorscale
+            opacity=0.8
+        )
+      ),
+      row=idx+1, col=2
+    )
+    fig.add_trace(
+      go.Mesh3d(
+        name='Target Estimate',
+        x=tar_est_mesh_vert[:,0],
+        y=tar_est_mesh_vert[:,1],
+        z=tar_est_mesh_vert[:,2],
+        i=tar_est_mesh_face[:,0],
+        j=tar_est_mesh_face[:,1],
+        k=tar_est_mesh_face[:,2],
+      ),
+      row=idx+1, col=3
+    )
+  fig.update_layout(height=350*len(index), width=900, title_text="Source Meshes, Target PointClouds, and Target_Estimate Meshes")
+  return fig 
+  
+  
+
 #visualize the results given source, target, and target estimate images
 #save_img is the path to save the img
 #datatype: 0-voxel, 1-mesh, 2-pointcloud
 def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index=0, sample=None, save_path=None):
-  
   batch_len = len(tar_batch[0])
   index = np.arange(batch_len)
   #sample specific number of elements from the batch if specified
@@ -180,6 +247,8 @@ def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index
     fig = visualize_results_3d_mesh(src_batch, tar_batch, tar_est, batch_index,  index)
   elif datatype==2:
     fig = visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index)
+  elif datatype==3:
+    fig = visualize_results_3d_custom(src_batch, tar_batch, tar_est, batch_index, index)
   #datatype 0  uses the matplotlib library
   if save_path and datatype == 0:
     print(f"Visualize_results_3d: Image saved to path {save_path}")

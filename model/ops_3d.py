@@ -48,25 +48,26 @@ def cumsum_3d(grid, grid_offset_x, grid_offset_y, grid_offset_z):
 #represent the end coordinates of the deformed meshes along each axis (in shape [3,n,n,n]), we need 3 interpolate_3d_mesh 
 #functions that each retrieves the "deformed" coordinates for x, y, and z  axis. 
 #For example, the "deformed" coordinates for [0.4, 0.5, 0.1], we will be [x_interp([0.4, 0.5, 0.1], y_interp[0.4, 0.5, 0.1], x_interp[0.4, 0.5, 0.1])].
-def interpolate_3d_mesh(mesh, grid, vox_size):
+def interpolate_3d_mesh(meshes, grids, vox_size):
   #define the grid points of the 3d mesh
   x_points = np.linspace(-1, 1,32)
   y_points = np.linspace(-1, 1,32)
   z_points = np.linspace(-1, 1,32)
   points = (x_points, y_points, z_points)
   #define the interpolation function along x, y, and z axis
-  x_interp = RegularGridInterpolator(points, grid[0])
-  y_interp = RegularGridInterpolator(points, grid[1])
-  z_interp = RegularGridInterpolator(points, grid[2])
-  x_verts = x_interp(mesh)
-  y_verts = y_interp(mesh)
-  z_verts = z_interp(mesh)
+  x_interp = RegularGridInterpolator(points, grids[2])
+  y_interp = RegularGridInterpolator(points, grids[1])
+  z_interp = RegularGridInterpolator(points, grids[0])
+  deformed_batch = []
+  x_verts = x_interp(meshes)
+  y_verts = y_interp(meshes)
+  z_verts = z_interp(meshes)
   mesh_list = []
   for i in range(len(x_verts)):
     vert = np.array([x_verts[i], y_verts[i], z_verts[i]])
     mesh_list.append(vert)
-  deformed_mesh = np.stack(mesh_list, axis=0)
-  return deformed_mesh
+  deformed_verts = np.stack(mesh_list, axis=0)
+  return deformed_verts
 
 
   

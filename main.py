@@ -54,7 +54,6 @@ def train_model(args, model_path):
   io_3d.save_obj(result_check, result_check_path)
 
 if __name__ == '__main__':
-  
   #initialize all config settings
   config_3d.initialize_config()
   #argument parser
@@ -83,8 +82,7 @@ if __name__ == '__main__':
   valid.add_argument("-ty", "--type", required=True, type=str, help="Specify the dataset to use for the new model")
   valid.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the model")
   valid.add_argument("-v", "--visualize", type=str, help='Specify whether to visualize, and provide the dataformat: pointcould, voxel, or mesh')
-  
-  
+
   args = ap.parse_args()
   
    
@@ -179,25 +177,43 @@ if __name__ == '__main__':
     #get the target and val sets
     #visualize if specified
     #pointcloud
+    #DEPRECATED
     if args.visualize == 'pointcloud':
+      print("This function is deprecated and is no longer supported => aborting..")
+      exit()
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
           val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
       result_checker.get_pointcloud_from_mesh(config_3d.PT_SAMPLE)
       result_checker.visualize(datatype=2, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+      
     #visualize mesh
+    #DEPRECATED
     elif args.visualize == 'mesh':
+      print("This function is deprecated and is no longer supported => aborting..")
+      exit()
       #for mesh visualization, we need to set get_mesh=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_mesh=True)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_src_mesh=True, get_tar_pt=False)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_mesh=True)
       result_checker.warp_mesh()
       result_checker.get_mesh_from_vox()
       result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
-    #voxel
+      
+    #a custom visualization routine designed for research purposes 
+    elif args.visualize == 'custom':
+      #for mesh visualization, we need to set get_mesh=True
+      val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_src_mesh=True, get_tar_pt=True)
+      result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
+      #we will retrieve the original src mesh representation and apply deformation directly
+      result_checker.update(get_src_mesh=True, get_tar_pt = True)
+      result_checker.warp_mesh()
+      result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+    #default: voxel visualization
     else:
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
           val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)

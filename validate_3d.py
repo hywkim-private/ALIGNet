@@ -7,7 +7,7 @@ import skimage
 import matplotlib
 import matplotlib.pyplot as plt
 from pytorch3d import ops
-from pytorch3d.structures import Meshes 
+from pytorch3d.structures import Meshes, Pointclouds
 from preprocess import convert_type_3d as conv
 import config_3d
 from model import loss_3d, ops_3d
@@ -38,6 +38,12 @@ from utils.vis_3d import visualize_results_3d
 #FIND THE APPROPRIATE "CONVERSION RANGE" FROM (0,32) TO (-1,1) AND FIX THE MASK, INTERPOLATION FUNCTION
 #CHECK THE VOXELIZATION SCHEME => TURN OFF NORMALIZATON
   
+  
+#__init__ input
+#model: ALIGNet_3d model
+#valid_tar: target dataset
+#valid-src: source dataset
+
 #this class stores necessary in order to check and validate results of the model
 class result_checker_3d():
   def __init__(self, model, valid_tar, valid_src):
@@ -55,15 +61,22 @@ class result_checker_3d():
 
   #run the validate function and update the tr_val_gap parameter
   #include a train loss if youre validating for a training loop
-  def update(self, train_loss=None, get_mesh=False):
+  #inputs
+  #self:self
+  #train_loss: whether or not to get the train set loss
+  #get_src_mesh: get the mesh representation for src dataset
+  #get_tar_pt: get the  pointcloud representation for the target dataset
+  def update(self, train_loss=None, get_src_mesh=False, get_tar_pt=False):
+    #run the validation
+    self.validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE, get_src_mesh, get_tar_pt)
     #set the get_mesh pararmeter to True in order to use the warp_mesh functionality 
     #the visualize() function will still work without update(get_mesh=True). But will only get the mesh/pointcloud data as sampled from their voxel counterparts
     self.src_mesh_ori = None
-    if get_mesh: 
-      tar_list, src_list, est_list, diff_grid_list, def_grid_list, avg_loss, src_mesh_list = validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE, get_mesh)
+    if get_src_mesh: 
       src_mesh_ori_list = []
+      #TODO:UPGRADE THIS FUNCTIONALITY USING THE MESH.CONCAT FUNCTION(?)
       #we need "list of verts and faces" to create Mesh object that stores all the meshes we have
-      for mesh in src_mesh_list:
+      for mesh in self.src_mesh_list:
         #make src_mesh_list to a Mesh datatype
         vert_list = []
         face_list = []
@@ -75,17 +88,19 @@ class result_checker_3d():
         src_mesh_ori = Meshes(vert_list, face_list)
         src_mesh_ori_list.append(src_mesh_ori)
       self.src_mesh_ori = src_mesh_ori_list
-    else:
-      tar_list, src_list, est_list, diff_grid_list, def_grid_list, avg_loss= validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE)
-    self.avg_loss = avg_loss
-    self.tar_list = tar_list
-    self.src_list = src_list
-    self.est_list = est_list
-    self.est_mesh_list = None 
-    self.diff_grid_list = diff_grid_list
-    self.def_grid_list = def_grid_list
-    self.val_loss.append(avg_loss)
-    self.train_loss.append(train_loss)
+    
+    if get_tar_pt:
+      tar_pt_ori_list = []
+      #we need "list of verts and faces" to create Mesh object that stores all the meshes we have
+      for point in self.tar_pt_list:
+        #make src_mesh_list to a Mesh datatype
+        point_list = []
+        for p in point:
+          point = torch.stack(p.points_list(), dim=0)[0]
+          point_list.append(point)
+        tar_pt_ori = Pointclouds(point_list)
+        tar_pt_ori_list.append(tar_pt_ori)
+      self.tar_pt_ori = tar_pt_ori_list
     self.epoch += 1
     self.updated = True
     
@@ -94,7 +109,7 @@ class result_checker_3d():
     #if the src_mesh list doesn't exist, raise error
     if self.src_mesh_ori == None:
       print("result_checker_3d.warp_mesh: ERROR-src_mesh_list is not initialized."
-      "Make sure to call update with get_mesh=True in order to retrieve the original mesh representation of source dataset.")
+      "Make sure to call update with get_src_mesh=True in order to retrieve the original mesh representation of source dataset.")
       return
     #in order for warp_mesh to work in sync with visualization, we first need to interpolate meshes individually,
     #then append them altogether in the Mesh datatype
@@ -126,6 +141,7 @@ class result_checker_3d():
         def_mesh_list.append(deformed_mesh)
     #deformed_mesh is a list of meshes, grouped in batches
     self.deformed_mesh = def_mesh_list
+    
   #after updating the voxelized results, get their mesh representations
   #save lists of voxelized tar, src, est data
   def get_mesh_from_vox(self):
@@ -142,6 +158,7 @@ class result_checker_3d():
       self.est_mesh.append(ops.cubify(self.est_list[i], 1))
     self.mesh=True
 
+
   def get_pointcloud_from_mesh(self, num_samples):
     if self.mesh == False:
       #call get_mesh if it hasn't been called
@@ -154,18 +171,17 @@ class result_checker_3d():
       self.src_pt.append(conv.PointCloud(self.src_mesh[i], num_samples, config_3d.DEVICE))
       self.est_pt.append(conv.PointCloud(self.est_mesh[i], num_samples, config_3d.DEVICE))
 
+
   #visualize the results in images 
   #batch_index specifies which batch to visualize
-  #datatype : 0-voxel, 1-mesh, 2-pointcloud, 3-custom return type
-  #datatype 3 is a customized visualization the original source mesh, target mesh, and the deformed mesh (warp field applied directly to the original src mesh)
+  #datatype : 0-voxel, 1-src(mesh)-tar(pointclud)-tar_est(mesh)
   def visualize(self, datatype=0, batch_index=0, sample=None, save_path=None):
     if datatype == 0:
       visualize_results_3d(self.src_list, self.tar_list, self.est_list, datatype, batch_index, sample, save_path)
     elif datatype == 1: 
-      visualize_results_3d(self.src_mesh_ori, self.tar_mesh, self.deformed_mesh, datatype, batch_index, sample, save_path)
-    elif datatype == 2:
-      visualize_results_3d(self.src_pt, self.tar_pt, self.est_pt, datatype, batch_index, sample, save_path)
-   
+      #FOR NOW WE WILL MANUALLY SET DATATYPE=> TODO:SYNCHRONIZE THE NAMING OF DATATYPES
+      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, 3, batch_index, sample, save_path)
+
 
   #update the loss value after running the model
   #print the graph of the current loss results->save to path if specified
@@ -183,61 +199,86 @@ class result_checker_3d():
     plt.close()
     
 
-#given source and target validation  dataloaders, perform all validation operations
-#save_img is the path to save the img
-@torch.no_grad()
-def validate_3d(model, source_image, target_image, grid_size):
-  input_image = torch.stack([source_image, target_image])
-  input_image  = input_image.permute([1,0,2,3,4])
-  diff_grid = model.forward(input_image)
-  #we will use def grid to apply warp directly to mesh
-  def_grid = model.cumsum(diff_grid)
-  tar_est = model.warp(def_grid, source_image)
-  tar_est = tar_est.squeeze(dim=1)
-  #calculate the loss for the image
-  loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
-  return tar_est, diff_grid, def_grid, loss
+  #given source and target validation  dataloaders, perform all validation operations
+  #save_img is the path to save the img
+  @torch.no_grad()
+  def validate_3d(self, model, source_image, target_image, grid_size):
+    input_image = torch.stack([source_image, target_image])
+    input_image  = input_image.permute([1,0,2,3,4])
+    diff_grid = model.forward(input_image)
+    #we will use def grid to apply warp directly to mesh
+    def_grid = model.cumsum(diff_grid)
+    tar_est = model.warp(def_grid, source_image)
+    tar_est = tar_est.squeeze(dim=1)
+    #calculate the loss for the image
+    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+    return tar_est, diff_grid, def_grid, loss
+  
+  #run loop for the dataloaders to run the validate() operation
+  #if get_mesh param is set to true, also return the mesh representation of src dataset (returns 7 results instead of 6 )
+  @torch.no_grad()
+  def validate_dl_3d(self, model, source_dl, target_dl, grid_size, get_src_mesh=False, get_tar_pt=False):
+    target_iter = iter(target_dl)
+    source_iter = iter(source_dl)
+    #we will also create lists for tar and src since dataloaders may shuffle them in random orders
+    target_list = []
+    source_list = []
+    est_list = []
+    diff_grid_list = []
+    def_grid_list = []
+    loss_list = []
+    #if visualize is True, initialize the list for src mesh
+    if get_src_mesh:
+      source_mesh_list = []
+    if get_tar_pt:
+      target_pt_list = []
+    for i in range(len(target_dl)):
+      #if get_src_mesh is true get the mesh representation of the source dataset
+      #parameters that check if src and tar datasets are retrieved
+      src_init = False
+      tar_init = False
+      if get_src_mesh:
+        #if get_src_mesh, the dataloader will return both src_vox and src_mesh
+        source, source_mesh = next(source_iter)
+        source_mesh_list.append(source_mesh)
+        src_init = True
+    
+      #if get_tar_pt is true, get the pointclouds of the tar dataset
+      if get_tar_pt:
+        #if get_tar_pt is True the dataloader will return both vox and pt
+        target, target_pt = next(target_iter)
+        target_pt_list.append(target_pt)
+        tar_init = True 
+      if src_init == False:
+        source = next(source_iter)
+      if tar_init == False:
+        target = next(target_iter)
+        
+      target = torch.FloatTensor(target).squeeze(dim=1).to(config_3d.DEVICE)
+      source = torch.FloatTensor(source).squeeze(dim=1).to(config_3d.DEVICE)
+      input = torch.stack([source, target])
+      input  = input.permute([1,0,2,3,4])
+      tar_est, diff_grid, def_grid, loss = self.validate_3d(model, source, target, grid_size)
+      target_list.append(target)
+      source_list.append(source)
+      est_list.append(tar_est)
+      diff_grid_list.append(diff_grid)
+      def_grid_list.append(def_grid)
+      loss_list.append(loss)
+    avg_loss_ = loss_3d.avg_loss_3d(loss_list)
+    #update th class parameterss
+    self.avg_loss = avg_loss_
+    self.tar_list = target_list
+    self.src_list = source_list
+    self.est_list = est_list
+    self.diff_grid_list = diff_grid_list
+    self.def_grid_list = def_grid_list
+    self.val_loss.append(avg_loss_)
+    #also update src_mesh and tar_pt if specified
+    if get_src_mesh:
+      self.src_mesh_list = source_mesh_list
+    if get_tar_pt:
+      self.tar_pt_list = target_pt_list
 
-#run loop for the dataloaders to run the validate() operation
-#if get_mesh param is set to true, also return the mesh representation of src dataset (returns 7 results instead of 6 )
-@torch.no_grad()
-def validate_dl_3d(model, source_dl, target_dl, grid_size, get_mesh=False):
-  target_iter = iter(target_dl)
-  source_iter = iter(source_dl)
-  #we will also create lists for tar and src since dataloaders may shuffle them in random orders
-  target_list = []
-  source_list = []
-  est_list = []
-  diff_grid_list = []
-  def_grid_list = []
-  loss_list = []
-  #if visualize is True, initialize the list for src mesh
-  if get_mesh:
-    source_mesh_list = []
-  for i in range(len(target_dl)):
-    target = next(target_iter)
-    #if visualize is true get the mesh representation of the source dataset
-    if get_mesh:
-      source, source_mesh = next(source_iter)
-      source_mesh_list.append(source_mesh)
-    else:
-      source = next(source_iter)
-    target = torch.FloatTensor(target).squeeze(dim=1).to(config_3d.DEVICE)
-    source = torch.FloatTensor(source).squeeze(dim=1).to(config_3d.DEVICE)
-    input = torch.stack([source, target])
-    input  = input.permute([1,0,2,3,4])
-    tar_est, diff_grid, def_grid, loss = validate_3d(model, source, target, grid_size)
-    target_list.append(target)
-    source_list.append(source)
-    est_list.append(tar_est)
-    diff_grid_list.append(diff_grid)
-    def_grid_list.append(def_grid)
-    loss_list.append(loss)
-  avg_loss_ = loss_3d.avg_loss_3d(loss_list)
-  #also return mesh if the visualize parameter is set to True
-  if get_mesh:
-    return target_list, source_list, est_list, diff_grid_list, def_grid_list, avg_loss_, source_mesh_list
-  else:
-    return target_list, source_list, est_list, diff_grid_list, def_grid_list, avg_loss_
   
 

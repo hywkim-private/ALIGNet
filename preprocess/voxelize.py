@@ -31,10 +31,10 @@ def convert_coordinate_to_index_expand(coord_range, num_cell, coordinate):
 #coordinate: the coordinate of the original system, dtype: float
 #return: index 
 def convert_coordinate_to_index(num_cell, coordinate):
-  #convert to (0,2) coord frane 
+  #convert to (0,2) coord frame
   coord_frame = coordinate + 1
   scale_factor = num_cell / 2
-  index = round(coordinate * scale_factor)
+  index = math.floor((coord_frame * scale_factor).item())
   return index 
 
 #wherever one or more pointclouds land, the corresponding voxel will be set to 1, else 0
@@ -44,6 +44,7 @@ def convert_coordinate_to_index(num_cell, coordinate):
 #return voxel of shape(len(pointcloud), voxel_num_x, voxel_num_y, voxel_num_z)
 def voxelize_pointclouds(pointcloud, voxel_num):
   voxel_num_z, voxel_num_x, voxel_num_y = voxel_num 
+  pointcloud = pointcloud.points_list()
   #convert the pointcloud coordinate system to a corresponding index in the voxel grids
   volume_list = []
   for cloud in pointcloud:
@@ -54,12 +55,11 @@ def voxelize_pointclouds(pointcloud, voxel_num):
     for i in range(len(cloud)):
       #for each point in pointclouds
       point = cloud[i]
-      #print(point)
       #locate the index of the coordinate in voxel grids
       coord_x = convert_coordinate_to_index(voxel_num_x, point[0])  
-      coord_y = convert_coordinate_to_index(voxel_num_y, point[2])
-      coord_z = convert_coordinate_to_index(voxel_num_z, point[1])  
-      #set the corresponding voxel value to 1 
+      coord_y = convert_coordinate_to_index(voxel_num_y, point[1])
+      coord_z = convert_coordinate_to_index(voxel_num_z, point[2])  
+      #set the corresponding voxel value to 1
       volume[coord_x, coord_y, coord_z] = 1
     volume_list.append(volume)
   volume_tensor = torch.stack(volume_list,axis=0)
