@@ -88,7 +88,7 @@ def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, au
       src_mesh = dataset.mesh
       #get the src mesh and the tar mesh
       #we need to convert mesh ds to tensor Dataset in order to pass it on as a Dataset module 
-      src_mesh = mesh_to_tensor(src_mesh, src_idx)
+      src_mesh = src_mesh.__getitem__(src_idx)
       #src will be a dataloader that returns both target and original src mesh
       src = conv.Expand(src_vox, len(tar), mesh = src_mesh)
       src_init = True

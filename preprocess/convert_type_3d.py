@@ -1,10 +1,14 @@
 import torch 
 from pathlib import Path
 import pytorch3d as p3d
-from torch.utils.data import random_split, Dataset
+from torch.utils.data import random_split, Dataset, Subset
 from pytorch3d import structures
 from pytorch3d.ops import sample_points_from_meshes
-from . import voxelize, augment_3d
+from . import voxelize, augment_3d, datasets
+
+
+    
+  
 
 #get the minimum range of a points
 #pointcloud: shape(minibatch, num_clouds, 3)
@@ -73,6 +77,7 @@ class Compound_Data():
     self.pointcloud = None
     self.voxel = None
     self.device = device
+    
   def scale_mesh(self):
     min_range = get_min_range(self.mesh)
     scale_vert(min_range, self.mesh)
@@ -116,21 +121,23 @@ class Expand(Dataset):
         mesh_list.append(mesh)
     #handle for the remaining number of img to fullfill the expand_size
     
-    
-    #TODO: APPLYING RANDOM SPLIT FOR BOTH IS WRONG => use random sampling of index or just take two from front using subset
     if not len(voxel)*len(vox_list) == expand_size:
       tail_length = expand_size - len(voxel) * len(vox_list) 
-      voxel, dump = random_split(voxel, [tail_length, len(voxel)-tail_length])
+      #get the random index with which to fill in the remaining length
+      tail_idx, _ = datasets.sample_index(tail_length, len(voxel)-tail_length, len(voxel))
+      #fill in the tail of the voxel dataset
+      voxel = Subset(voxel, tail_idx)
       vox_list.append(voxel)
       #the case for when we are also returning mesh
       if self.is_mesh:
-        mesh, dump = random_split(mesh, [tail_length, len(mesh)-tail_length])
+        if not len(mesh) == len(tail_idx):
+          mesh = mesh.__getitem__(tail_idx)
         mesh_list.append(mesh)
     self.vox_list = torch.utils.data.ConcatDataset(vox_list)
     #only initialize mesh_list if specified by tehmesh param
     if self.is_mesh:
       self.mesh_list = torch.utils.data.ConcatDataset(mesh_list)
-  
+
 
   def __getitem__(self, index):
     x = self.vox_list[index]

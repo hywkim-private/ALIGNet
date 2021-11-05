@@ -39,18 +39,27 @@ def visualize_results_3d_vox(src_batch, tar_batch, tar_est, batch_index, index):
   src_batch = src_batch[batch_index]
   tar_batch = tar_batch[batch_index]
   tar_est = tar_est[batch_index]
-  fig = plt.figure(figsize=(15*len(index), 45))
+  fig = plt.figure(figsize=(5*len(index), 15))
   for idx,i in enumerate(index):
     ax1 = fig.add_subplot(len(index), 3, idx*3+1,projection='3d')
     ax1.set_title('Source Voxel')
+    ax1.set_xlabel("x")
+    ax1.set_ylabel('y')
+    ax1.set_zlabel('z')
     fig.tight_layout() 
     ax1.voxels(src_batch[i], edgecolor='k')
     ax2 = fig.add_subplot(len(index), 3, idx*3+2,projection='3d')
     ax2.set_title('Target Voxel')
+    ax2.set_xlabel("x")
+    ax2.set_ylabel('y')
+    ax2.set_zlabel('z')
     fig.tight_layout() 
     ax2.voxels(tar_batch[i], edgecolor='k')
     ax3 = fig.add_subplot(len(index), 3, idx*3+3,projection='3d')
     ax3.set_title('Estimated Voxel')
+    ax3.set_xlabel("x")
+    ax3.set_ylabel('y')
+    ax3.set_zlabel('z')
     fig.tight_layout() 
     ax3.voxels(tar_est[i],  edgecolor='k')
     fig.show()

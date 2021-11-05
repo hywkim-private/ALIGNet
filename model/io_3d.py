@@ -57,7 +57,6 @@ def save_model(checkpoint, checkpoint_path, filename):
   torch.save(checkpoint, path)
   
 
-
 #save a dictionary of datasets
 def save_ds(ds, ds_name, ds_path):
   path = ds_path + ds_name + '.pt'
