@@ -197,7 +197,6 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, batch_index, ind
     tar_est_mesh_face = tar_est_mesh_faces[i]
     fig.add_trace(
       go.Mesh3d(
-        name='Source',
         x=src_vert[:,0],
         y=src_vert[:,1],
         z=src_vert[:,2],
@@ -209,7 +208,6 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, batch_index, ind
     )
     fig.add_trace(
       go.Scatter3d(
-        name='Target',
         x=tar_pt_point[:,0],
         y=tar_pt_point[:,1],
         z=tar_pt_point[:,2],
@@ -224,7 +222,6 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, batch_index, ind
     )
     fig.add_trace(
       go.Mesh3d(
-        name='Target Estimate',
         x=tar_est_mesh_vert[:,0],
         y=tar_est_mesh_vert[:,1],
         z=tar_est_mesh_vert[:,2],
@@ -234,7 +231,7 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, batch_index, ind
       ),
       row=idx+1, col=3
     )
-  fig.update_layout(height=350*len(index), width=900, title_text="Source Meshes, Target PointClouds, and Target_Estimate Meshes")
+  fig.update_layout(height=400*len(index), width=1200, title_text="Source Meshes, Target PointClouds, and Target_Estimate Meshes")
   return fig 
   
   
@@ -266,6 +263,7 @@ def visualize_results_3d(src_batch,  tar_batch, tar_est, datatype=0, batch_index
   elif save_path:
     print(f"Visualize_results_3d: Image saved to path {save_path}")
     fig.write_image(save_path)
+
   return
 
 

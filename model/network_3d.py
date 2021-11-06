@@ -3,19 +3,8 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from imgaug import augmenters as iaa
-from . import ops_3d
+from . import ops_3d, model
 
-#define the alignnet model
-def get_conv_3d(grid_size):
-  model = nn.Sequential (
-      nn.MaxPool3d (2),
-      nn.Conv3d (2, 20, 2),
-      nn.ReLU(),
-      nn.MaxPool3d (2),
-      nn.Conv3d (20, 20, 2),
-      nn.ReLU(),
-  )
-  return model
 
 #perform cumsum operation, then upsample the grid to vox_size
 class cumsum_layer_3d(nn.Module):
@@ -63,31 +52,13 @@ class axial_layer_3d(nn.Module):
     x = x.view(batch, 3,self.grid_size,self.grid_size,self.grid_size)
     return x
 
-#define the convolutional + linear layers
-class conv_layer_3d(nn.Module):
-  def __init__(self, grid_size, init_grid):
-    super().__init__()
-    self.conv = get_conv_3d(grid_size)
-    self.flatten = nn.Flatten()
-    self.linear1 = nn.Sequential(nn.Linear(4320,800),nn.ReLU(),nn.Linear(800, 100), nn.ReLU())
-    self.linear2 = nn.Linear(100, 3*grid_size*grid_size*grid_size)
-    self.linear2.bias = nn.Parameter(init_grid)
-    self.linear2.weight.data.fill_(float(0))
-  def forward(self, x):
-    #print(f"conv_layer_3d: shape of input-{x.shape}")
-    x = self.conv(x)
-    #print(f"conv_layer_3d: shape after the conv layer-{x.shape}")
-    x = self.flatten(x)
-    x = self.linear1(x)
-    x = self.linear2(x)
-    return x
 
 #define the model class
 class ALIGNet_3d(nn.Module):
-  def __init__(self, name, grid_size, vox_size, init_grid):
+  def __init__(self, name, grid_size, vox_size, init_grid, model_idx):
     super().__init__()
     self.name = name 
-    self.conv_layer = conv_layer_3d(grid_size, init_grid)
+    self.conv_layer = model.model(init_grid, grid_size, model_idx)
     self.cumsum_layer = cumsum_layer_3d(grid_size, vox_size)
     self.warp_layer = warp_layer_3d()
     self.axial_layer = axial_layer_3d(grid_size)

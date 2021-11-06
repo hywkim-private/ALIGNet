@@ -39,6 +39,13 @@ from utils.vis_3d import visualize_results_3d
 #CHECK THE VOXELIZATION SCHEME => TURN OFF NORMALIZATON
   
   
+#TODO: UNIFY THE METHOD OF DATA CONCATENATION IN CONVERT_PY , DATASETS_PY  
+
+
+#TODO:IMPLEMENT THE "FLIP" FUNCTIONALITY FOR VISUALIZATION
+#DIVERSIFY THE MODEL
+
+
 #__init__ input
 #model: ALIGNet_3d model
 #valid_tar: target dataset
@@ -124,11 +131,13 @@ class result_checker_3d():
           m = mesh[i]
           m_verts = m.verts_list()[0]
           m_faces = m.faces_list()[0]
-          m_faces = np.stack(m_faces)
-          m_verts = np.stack(m_verts)
+          m_faces = np.stack(m_faces, axis=0)
+          m_verts = np.stack(m_verts, axis=0)
           g = def_grid[i]
           g = g.detach().numpy()
           #interpolate the single mesh
+          
+          
           deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g, config_3d.VOX_SIZE)
           #make faces and verts into Tensors so it can make up for the Mesh datatype
           m_faces = torch.Tensor(m_faces)
@@ -256,8 +265,6 @@ class result_checker_3d():
         
       target = torch.FloatTensor(target).squeeze(dim=1).to(config_3d.DEVICE)
       source = torch.FloatTensor(source).squeeze(dim=1).to(config_3d.DEVICE)
-      input = torch.stack([source, target])
-      input  = input.permute([1,0,2,3,4])
       tar_est, diff_grid, def_grid, loss = self.validate_3d(model, source, target, grid_size)
       target_list.append(target)
       source_list.append(source)

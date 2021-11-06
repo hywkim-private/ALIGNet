@@ -77,7 +77,7 @@ def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, au
     src_init = False
     if get_tar_pt:
       pt = dataset.pointcloud
-      tar_pt = pt_to_tensor(pt, tar_idx)
+      tar_pt = pt.__getitem__(tar_idx)
       tar = conv.Augment_3d(tar_vox, batch_size, vox_size, val_set=True, augment_times=augment_times, pointcloud=tar_pt)
       tar_init = True
     if tar_init == False:
@@ -99,24 +99,7 @@ def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, au
     tar = conv.Augment_3d(tar_vox, batch_size, vox_size, augment_times=augment_times)
     src = conv.Expand(src_vox, len(tar))
     return tar, src
-  
-"""#given train and valid, return appropriatly augmented data for each set 
-def aug_train_valid_3d(train_set, valid_set, split_proportion_tr, split_proportion_batch_size, vox_size, augment_times_tr, augment_times_src):
-  #get the train dataset
-  tr_tar, tr_src = augment_datasets_3d(train_set, 0, split_proportion, batch_size, vox_size, augment_times_tr)
-  #the the valid dataset
-  
-  TRAIN_SIZE = len(train_set)
-  VAL_SIZE = len(valid_set)
-  Trainset_target, Trainset_source = random_split(
-    train_set, [int(TRAIN_SIZE*config_3d.TARGET_PROPORTION), len(train_set) - int(TRAIN_SIZE*config_3d.TARGET_PROPORTION)])
-  Validset_target, Validset_source = random_split(
-    valid_set, [int(VAL_SIZE*config_3d.), len(valid_set) - int(VAL_SIZE*config_3d.TARGET_PROPORTION_VAL)])
-  train_tar = conv.Augment_3d(Trainset_target, BATCH_SIZE, 32, augment_times = augment_times)
-  valid_tar = conv.Augment_3d(Validset_target, BATCH_SIZE, 32, val_set=True, augment_times = 1)
-  train_src = conv.Expand(Trainset_source, len(train_tar))
-  valid_src = conv.Expand(Validset_source, len(valid_tar))
-  return train_tar, train_src, valid_tar, valid_src"""
+
 
 #given dataset, return the appropriate dataloader
 #SAME as 2d

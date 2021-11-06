@@ -69,6 +69,7 @@ if __name__ == '__main__':
   new.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the new model")
   new.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
   new.add_argument("-i", "--iter", type=int, help="number of times to run the training loop, default: 10") 
+  new.add_argument("-m", "--model", type=int, help="the type index of the model on which to train ALIGNet. default: 1")
   
   #download and save new dataset
   data.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
@@ -132,7 +133,7 @@ if __name__ == '__main__':
     save_path = config_3d.DATA_PATH + args.name
     #make new  model
     init_grid = ops_3d.init_grid_3d(config_3d.GRID_SIZE).view(-1).to(config_3d.DEVICE)
-    model = network_3d.ALIGNet_3d(args.name, config_3d.GRID_SIZE, config_3d.VOX_SIZE, init_grid).to(config_3d.DEVICE)
+    model = network_3d.ALIGNet_3d(args.name, config_3d.GRID_SIZE, config_3d.VOX_SIZE, init_grid, args.model).to(config_3d.DEVICE)
     
     #make a directory to save model and dataset
     if not os.path.exists(config_3d.MODEL_PATH + args.name):
