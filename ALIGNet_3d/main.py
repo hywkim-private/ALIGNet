@@ -8,19 +8,21 @@ from model import io_3d, ops_3d, network_3d
 from preprocess import datasets
 
 #given a string of datatype, return its appropriate index
-def data_idx(datatype_str):
+def get_data_idx(datatype_str):
   dtype = 0
   if datatype_str == "plane":
     dtype = 0
   return dtype
     
 #common code snippet--load data as specified
-def load_ds():
+#input
+#ds_idx: the dataset index 
+def load_ds(ds_idx):
   #decide and load which type of data to use (ADD MORE DATA)
   #default d_type = plane
-  dtype = data_idx(args.type)
+  dtype = get_data_idx(args.type)
   #load datasets
-  tr, val = io_3d.load_ds(config_3d.DATA_PATH +'datasets/'+args.type+'/', ds_index=dtype)
+  tr, val = io_3d.load_ds(config_3d.DATA_PATH +'datasets/'+args.type+'/', ds_type=dtype, ds_idx=ds_idx)
   return tr, val
   
 #load and augment train and valid datasets
@@ -29,11 +31,11 @@ def get_ds(file_path, tr_size, val_size, total_num, pt_sample):
   tr_mesh = io_3d.Load_Mesh(file_path, sample_index=tr_index)
   val_mesh = io_3d.Load_Mesh(file_path, sample_index=val_index)
   #here we convert mesh datatype into pointlcoud and voxel datatype
-  tr, val = datasets.get_datasets_3d(tr_mesh,val_mesh, config_3d.VOX_SIZE, pt_sample, config_3d.DEVICE)
+  tr, val = datasets.get_datasets_3d(tr_mesh,val_mesh, config_3d.VOX_SIZE, pt_sample)
   return tr, val
   
 #common code snippet--run the train iteration loop
-def train_model(args, model_path):
+def train_model(args, tr, val, model_path):
   #save the iter variable as default or specified by the user
   iter_t = 10
   if args.iter: 
@@ -70,7 +72,7 @@ if __name__ == '__main__':
   new.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
   new.add_argument("-i", "--iter", type=int, help="number of times to run the training loop, default: 10") 
   new.add_argument("-m", "--model", type=int, help="the type index of the model on which to train ALIGNet. default: 1")
-  
+  new.add_argument("-d", "--data", type=int, help="the index of the dataset=> default:0")
   #download and save new dataset
   data.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
   data.add_argument("-d", "--download", action='store_true', help ="Download the data and get the dataset")
@@ -78,11 +80,13 @@ if __name__ == '__main__':
   train.add_argument("-ty", "--type", required=True, type=str,  help="Specify the dataset to use for the new model")
   train.add_argument("-i", "--iter", type=int, help="number of times to run the training loop, default: 10")
   train.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the model")
-  
+  train.add_argument("-d", "--data", type=int, help="the index of the dataset=> default:0")
+
   #validate the model using the valid dataset
   valid.add_argument("-ty", "--type", required=True, type=str, help="Specify the dataset to use for the new model")
   valid.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the model")
   valid.add_argument("-v", "--visualize", type=str, help='Specify whether to visualize, and provide the dataformat: pointcould, voxel, or mesh')
+  valid.add_argument("-d", "--data", type=int, help="the index of the dataset=> default:0")
 
   args = ap.parse_args()
   
@@ -103,13 +107,16 @@ if __name__ == '__main__':
       
     #download data
     if not os.path.exists(save_path):
-        os.makedirs(save_path)
-      
+      os.makedirs(save_path)
+    #the path for the idx directory
+    save_path = io_3d.latest_filename_data(save_path) + "/"
+    #make a new data idx directory
+    os.makedirs(save_path)
     #download only if the download flag is set
     if args.download:
       model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
-    dtype = data_idx(args.type)
-    tr, val = get_ds(load_path, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, 100, config_3d.PT_SAMPLE)
+    dtype = get_data_idx(args.type)
+    tr, val = get_ds(load_path, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
     
     #save datasets to the same directory as the model
     model.io_3d.save_ds(tr, 'tr', save_path)
@@ -119,7 +126,8 @@ if __name__ == '__main__':
     #get the path to the target model
     model_path = config_3d.MODEL_PATH + args.name + '/'
     model_obj_path = model_path + args.name + '.pt'
-    
+    #update the data idx
+    data_idx = 0 if args.data is None else args.data
   #if new model, download and create dataset, make new model
   if args.command == 'new':
     #first check if the dataset exists
@@ -142,9 +150,10 @@ if __name__ == '__main__':
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/loss_graphs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/images')
-    tr, val = load_ds()
-    print(f"Datatype of tr: {type(tr)}")
-    train_model(args, model_path)
+    tr, val = load_ds(data_idx)
+    tr.to(config_3d.DEVICE)
+    val.to(config_3d.DEVICE)
+    train_model(args, tr, val, model_path)
     
   #common operation for train and valid 
   elif args.command == 'train' or args.command == 'valid':
@@ -163,20 +172,21 @@ if __name__ == '__main__':
     model_obj_path = model_path + args.name + '.pt'
     model = torch.load(model_obj_path).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
-    tr, val = load_ds()
-    train_model(args, model_path)
+    tr, val = load_ds(data_idx)
+    tr.to(config_3d.DEVICE)
+    val.to(config_3d.DEVICE)
+    train_model(args, tr, val, model_path)
     
-  
   if args.command == 'valid':
     #load the previous model
-    print(model_obj_path)
-    model = torch.load(model_obj_path).to(config_3d.DEVICE)
+    model = torch.load(model_obj_path, map_location=torch.device('cpu')).to(config_3d.DEVICE)
     #path to save the visualized image 
     image_path = model_path + 'outputs/images/'
-    image_path = io_3d.latest_filename(image_path)
+    image_path = io_3d.latest_filename_png(image_path)
     #load the neccessary datasets
-    tr, val = load_ds()
-
+    tr, val = load_ds(data_idx)
+    tr.to(config_3d.DEVICE)
+    val.to(config_3d.DEVICE)
     #get the target and val sets
     #visualize if specified
     #pointcloud

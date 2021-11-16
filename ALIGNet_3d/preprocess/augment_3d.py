@@ -84,12 +84,12 @@ def random_mask_3d(data, size, mask_size, square=True, recursion_counter=0, get_
         reapply_counter += 1
     #if is_pt is True, apply the mask operation to pointcloud
     if is_pt:
-      start_coordinate_x = -1 + (start_coordinate_x*2 / size)
-      start_coordinate_y = -1 + (start_coordinate_y*2 / size)
-      start_coordinate_z = -1 + (start_coordinate_z*2 / size)
-      end_coordinate_x = -1 + (end_coordinate_x*2 / size)
-      end_coordinate_y = -1 + (end_coordinate_y*2 / size)
-      end_coordinate_z = -1 + (end_coordinate_z*2 / size)
+      start_coordinate_x = (start_coordinate_x-(size/2)) / (size/2)
+      start_coordinate_y = (start_coordinate_y-(size/2)) / (size/2)
+      start_coordinate_z = (start_coordinate_z-(size/2)) / (size/2)
+      end_coordinate_x = (end_coordinate_x-(size/2)) / (size/2)
+      end_coordinate_y = (end_coordinate_y-(size/2)) / (size/2)
+      end_coordinate_z = (end_coordinate_z-(size/2)) / (size/2)
       #identify the target pointcloud
       pt = pt_ts[i-1]
       #store the deleted idx from the verts_lists => use this list to delete faces

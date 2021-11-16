@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 import config_3d
-from model import loss_3d, io_3d
+from model import loss_3d, io_3d, ops_3d
 from preprocess import datasets
   
 #run the model for a single epoch
@@ -43,13 +43,15 @@ def run_epoch_3d(model, optimizer,  src_loader, tar_loader, grid_size):
       tar_batch = torch.tensor(tar_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config_3d.DEVICE)
       src_batch = torch.tensor(src_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config_3d.DEVICE)
       input_image = torch.stack([src_batch, aug_batch])
+      #input should be of shape (N,C,D,)
       input_image  = input_image.permute([1,0,2,3,4])
       #run the network
       diff_grid = model.forward(input_image)
       def_grid = model.cumsum(diff_grid)
       tar_est = model.warp(def_grid, src_batch)
       tar_est = tar_est.squeeze(dim=1)
-      loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+      init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
+      loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, init_grid, config_3d.GRID_SIZE,  config_3d.VOX_SIZE)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()

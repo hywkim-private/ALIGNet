@@ -11,7 +11,9 @@ from pytorch3d.structures import Meshes, Pointclouds
 from preprocess import convert_type_3d as conv
 import config_3d
 from model import loss_3d, ops_3d
-from utils.vis_3d import visualize_results_3d
+from utils.vis_3d import visualize_results_3d, visualize_pointclouds, visualize_mesh
+
+
 
 #TODO: THE MESH REPRESENTATION OF THE INPUT DATA IS NOT STORED IN DATALOADERS IN THE FIRST PLACE
 #MUST MODIFY THE DATALOADERS IN ORDER TO RETURN A PACKED (MESH, VOXEL) TUPLE IF SPECIFIED BY AN ARGUMENT (DONE)
@@ -45,6 +47,19 @@ from utils.vis_3d import visualize_results_3d
 #TODO:IMPLEMENT THE "FLIP" FUNCTIONALITY FOR VISUALIZATION
 #DIVERSIFY THE MODEL
 
+
+#TODO: THE DATA VISUALIZATION YIELDS OVERLAPPING IMAGES THOUGH IT SHOULDN'T => FIX 
+
+
+#https://stackoverflow.com/questions/59327021/how-to-plot-a-2d-structured-mesh-in-matplotlib
+
+
+
+#TWO POSSIBLE POINTS OF ERROR: 1. INTEPOLATE_3D 2. CONVERTING VOXEL => MESH DEF_GRID
+
+
+#ONLY THING LEFT TO CHECK: IF THE TWO DEF_GRIDS ARE EQUAL (RIGHT AFTER RETURNS AND BEFORE INTERPOLATING)
+#IF NOT, PRBLM WITH THE INTERPOLATE
 
 #__init__ input
 #model: ALIGNet_3d model
@@ -123,6 +138,7 @@ class result_checker_3d():
     else: 
       def_mesh_list = []
       for mesh, def_grid in zip(self.src_mesh_ori, self.def_grid_list):
+        #def grid of shape (N,C,D,H,W)
         vertice_list = []
         face_list = []
         #for each batch of inputs
@@ -133,12 +149,26 @@ class result_checker_3d():
           m_faces = m.faces_list()[0]
           m_faces = np.stack(m_faces, axis=0)
           m_verts = np.stack(m_verts, axis=0)
-          g = def_grid[i]
+          #m_verts = np.flip(m_verts, 1)
+          g = def_grid[i].to(config_3d.CPU)
           g = g.detach().numpy()
-          #interpolate the single mesh
           
           
-          deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g, config_3d.VOX_SIZE)
+          #------------------TEST UNIT--------------------
+          #convert the backward ward into forward ward
+          print(g[0])
+          print("running ..")
+          x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g[0],g[1],g[2])
+          print("warp done")
+          g_fr = np.stack([x_fr, y_fr, z_fr])
+          print(g_fr[0])
+          exit()
+          #-----------------------------------------------
+          
+          #interpolate the single mesh with the forward warp
+          deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g_fr, config_3d.VOX_SIZE)
+          
+          #deformed_verts = np.flip(deformed_verts, 1).copy()
           #make faces and verts into Tensors so it can make up for the Mesh datatype
           m_faces = torch.Tensor(m_faces)
           deformed_verts = torch.Tensor(deformed_verts)
@@ -186,10 +216,10 @@ class result_checker_3d():
   #datatype : 0-voxel, 1-src(mesh)-tar(pointclud)-tar_est(mesh)
   def visualize(self, datatype=0, batch_index=0, sample=None, save_path=None):
     if datatype == 0:
-      visualize_results_3d(self.src_list, self.tar_list, self.est_list, datatype, batch_index, sample, save_path)
+      visualize_results_3d(self.src_list, self.tar_list, self.est_list, self.def_grid_list, datatype, batch_index, sample, save_path)
     elif datatype == 1: 
       #FOR NOW WE WILL MANUALLY SET DATATYPE=> TODO:SYNCHRONIZE THE NAMING OF DATATYPES
-      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, 3, batch_index, sample, save_path)
+      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, self.def_grid_list, 3, batch_index, sample, save_path)
 
 
   #update the loss value after running the model
@@ -220,7 +250,8 @@ class result_checker_3d():
     tar_est = model.warp(def_grid, source_image)
     tar_est = tar_est.squeeze(dim=1)
     #calculate the loss for the image
-    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+    init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
+    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, init_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
     return tar_est, diff_grid, def_grid, loss
   
   #run loop for the dataloaders to run the validate() operation

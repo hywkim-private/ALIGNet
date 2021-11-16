@@ -60,13 +60,13 @@ def initialize_config():
     DEVICE = torch.device("cuda" if USE_CUDA else "cpu")
     CPU = torch.device('cpu')
     EPOCHS = 50
-    BATCH_SIZE = 50
+    BATCH_SIZE = 20
     
     TARGET_PROPORTION = 0.5
     TARGET_PROPORTION_VAL = 0.5
     TARGET_PROPORTION_TEST = 0.5
-    TRAIN_SIZE = 100
-    VAL_SIZE = 20
+    TRAIN_SIZE = 300
+    VAL_SIZE = 30
     N_CLASS = 10
     TEST_SIZE = 10
     IMAGE_SIZE = 32
@@ -75,7 +75,7 @@ def initialize_config():
     MASK_SIZE = 60
     MASK_STRIDE = 20
     AUGMENT_TIMES_TR = 2
-    AUGMENT_TIMES_VAL = 2
+    AUGMENT_TIMES_VAL = 1
     #parameters for the warp-field/grid
     GRID_SIZE = 7
     VOX_SIZE = 32

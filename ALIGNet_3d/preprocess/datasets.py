@@ -10,6 +10,7 @@ from . import convert_type_3d as conv
 def sample_index(train_size, val_size, total_num):
   pool= np.arange(total_num)
   index_train = np.random.choice(pool, size=train_size, replace=False)
+  pool = np.delete(pool, index_train)
   index_val = np.random.choice(pool, size=val_size, replace=False)
   index_train = np.sort(index_train)
   index_val = np.sort(index_val)
@@ -38,9 +39,9 @@ def pt_to_tensor(pt, idx):
 #helper function for aug_datasets_3d
 #we split this functionality to gurantee manual augmentation of data on same randomly-split datasets
 #returns: a set of train and valid datasets of meshes
-def get_datasets_3d(tr, val, vox_size, pt_sample, device):
-  train_set = conv.Compound_Data(tr, device)
-  val_set = conv.Compound_Data(val, device)
+def get_datasets_3d(tr, val, vox_size, pt_sample):
+  train_set = conv.Compound_Data(tr)
+  val_set = conv.Compound_Data(val)
   train_set.scale_mesh()
   train_set.get_pointcloud(pt_sample)
   train_set.get_voxel(vox_size)
@@ -63,7 +64,7 @@ def get_datasets_3d(tr, val, vox_size, pt_sample, device):
 def aug_datasets_3d(dataset, settype, split_proportion, batch_size, vox_size, augment_times, get_src_mesh=False, get_tar_pt=False):
   voxel = dataset.voxel
   data_size = len(voxel)
-  tar_idx, src_idx = sample_index(int(data_size*split_proportion),data_size - int(data_size*split_proportion), data_size)
+  tar_idx, src_idx = sample_index(int(data_size*split_proportion), data_size - int(data_size*split_proportion), data_size)
   #the Mesh.__getitem__ doesn't support np type index inputs ==> list works
   src_idx = src_idx.tolist()
   tar_idx = tar_idx.tolist()

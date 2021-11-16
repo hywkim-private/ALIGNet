@@ -53,9 +53,9 @@ def scale_vert(coord_range, mesh):
   
 #given dataset of meshes, sample data into pointclouds
 #if mesh is False, we are using the pointcloud 
-def PointCloud(mesh, num_samples, device):
+def PointCloud(mesh, num_samples):
   samples = sample_points_from_meshes(mesh, num_samples=num_samples)
-  features=torch.zeros(len(samples), num_samples, 5).to(device)
+  features=torch.zeros(len(samples), num_samples, 5)
   pointcloud = structures.Pointclouds(samples, features=features)
   return pointcloud 
 
@@ -72,18 +72,25 @@ def Voxel(pointcloud, voxel_num):
 #load the mesh from a given location, save both the pointcloud and voxel representation of the model
 class Compound_Data():
   #load the mesh data
-  def __init__(self, mesh, device):
+  def __init__(self, mesh):
     self.mesh = mesh
     self.pointcloud = None
     self.voxel = None
-    self.device = device
+  #a replicate of the torch.to() functionality 
+  #apply torch.to() to all the Tensors in the compound class
+  def to(self, device):
+    self.mesh.to(device)
+    if self.pointcloud is not None:
+      self.pointcloud.to(device)
+    if self.voxel is not None:
+      self.voxel.to(device)
     
   def scale_mesh(self):
     min_range = get_min_range(self.mesh)
     scale_vert(min_range, self.mesh)
 
   def get_pointcloud(self, num_samples):
-    self.pointcloud = PointCloud(self.mesh, num_samples, self.device)
+    self.pointcloud = PointCloud(self.mesh, num_samples)
   def get_voxel(self, voxel_num):
     if not self.pointcloud == None:
       self.voxel = Voxel(self.pointcloud, voxel_num)
@@ -179,6 +186,7 @@ class Augment_3d(Dataset):
     self.val_set = val_set
     self.batch_size = batch_size
     self.augment_times = augment_times
+    self.is_aug = False if augment_times == 0 else True
     #first augment the original tar_list to match the returning batch size, then perform augmentation
     tar_list = []
     for i in range(self.augment_times):
@@ -233,7 +241,7 @@ class Augment_3d(Dataset):
       if self.is_pt:
         vox_batch, pt_batch = zip(*batch)
         vox_batch = torch.stack(list(vox_batch), dim=0)
-        if self.augment_times > 0:
+        if self.is_aug:
           pt_batch = list(pt_batch)
           pt_list = []
           #concatenate the batch into type Pointcloud
@@ -246,7 +254,7 @@ class Augment_3d(Dataset):
           return vox_batch, pt_batch
       else:
         vox_batch = torch.stack(list(batch), dim=0)
-        if self.augment_times > 0:
+        if self.is_aug:
           vox_batch = self.mask(vox_batch) 
           return vox_batch
     else:
@@ -254,8 +262,8 @@ class Augment_3d(Dataset):
       aug_batch = torch.stack(list(aug_batch), dim=0)
       tar_batch = torch.stack(list(tar_batch), dim=0)
       #the batch will be of shape batchx3xDxNxWxH)
-      if self.augment_times > 0:
-        aug_batch = self.mask(aug_batch) 
+      if self.is_aug:
+        aug_batch = self.mask(aug_batch)
       return aug_batch, tar_batch
 
 

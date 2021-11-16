@@ -25,7 +25,7 @@ def get_conv_3d(conv_index):
         nn.ReLU(),
         )
     if conv_index == 1:
-        model = mode1
+        model = model1
     elif conv_index == 2:
         model = model2
     return model

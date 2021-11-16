@@ -37,6 +37,51 @@ def convert_coordinate_to_index(num_cell, coordinate):
   index = math.floor((coord_frame * scale_factor).item())
   return index 
 
+#given a voxel of shape (x,y,z), fill in the "fully enclosed voxels"--or voxel points closed on all sides
+def fill_enclosed_voxels(voxel, vox_num):
+  for i in range(vox_num):
+    for j in range(vox_num):
+      #denotes whether or not the voxel indice is enclosed along the specified axis
+      x_enclosed = False
+      y_enclosed = False
+      z_enclosed = False
+      #denotes if the enclosure boundry of x has been found
+      x_found = False
+      y_found = False
+      z_found = False 
+
+      #k is the target index
+      for k in range(vox_num):
+        #if x_start coordinate is found and the voxel is 1, define the range as enclosed
+        if x_enclosed == True and voxel[k,i,j] == 1:
+          x_found = True
+          x_end=k
+        if y_enclosed == True and voxel[i,k,j] == 1:
+          y_found = True
+          y_end=k
+        if z_enclosed == True and voxel[i,j,k] == 1:
+          z_found = True 
+          z_end=k
+        #find the first instance of 1
+        if x_enclosed == False and voxel[k,i,j] == 1:
+          x_enclosed = True
+          x_start=k
+        if y_enclosed == False and voxel[i,k,j] == 1:
+          y_enclosed = True
+          y_start=k
+        if z_enclosed == False and voxel[i,j,k] == 1:
+          z_enclosed = True
+          z_start=k
+        #if the enclosure boundry is found => set all values within that boundry to 1 
+        if x_found:
+          voxel[x_start:x_end,i,j]=1
+        if y_found:
+          voxel[i,y_start:y_end,j]=1
+        if z_found:
+          voxel[i,j,z_start:z_end]=1
+  return voxel
+        
+
 #wherever one or more pointclouds land, the corresponding voxel will be set to 1, else 0
 #pointcloud: shape(minibatch, num_clouds, 3)
 #range: type-list of tuples, shape [(min,max), (min,max), (min,max)] - the range of coordinates wherein the pointclouds lie
@@ -59,10 +104,15 @@ def voxelize_pointclouds(pointcloud, voxel_num):
       coord_x = convert_coordinate_to_index(voxel_num_x, point[0])  
       coord_y = convert_coordinate_to_index(voxel_num_y, point[1])
       coord_z = convert_coordinate_to_index(voxel_num_z, point[2])  
-      #set the corresponding voxel value to 1
+      #set the corresponding voxel value to i
+      if coord_x == voxel_num_x:
+        coord_x -= 1
+      if coord_y == voxel_num_y:
+        coord_y -= 1
+      if coord_z == voxel_num_z:
+        coord_z -= 1
       volume[coord_x, coord_y, coord_z] = 1
+    volume = fill_enclosed_voxels(volume, voxel_num_x)
     volume_list.append(volume)
   volume_tensor = torch.stack(volume_list,axis=0)
   return volume_tensor
-
-
