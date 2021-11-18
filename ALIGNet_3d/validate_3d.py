@@ -157,14 +157,11 @@ class result_checker_3d():
           #------------------TEST UNIT--------------------
           #convert the backward ward into forward ward
           print(g[0])
-          print("running ..")
           x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g[0],g[1],g[2])
-          print("warp done")
           g_fr = np.stack([x_fr, y_fr, z_fr])
-          print(g_fr[0])
+          print("_------------------------_")
+          print(x_fr)
           exit()
-          #-----------------------------------------------
-          
           #interpolate the single mesh with the forward warp
           deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g_fr, config_3d.VOX_SIZE)
           

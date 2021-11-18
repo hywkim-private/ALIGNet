@@ -413,6 +413,7 @@ def visualize_results_3d(src_batch,  tar_batch, tar_est, def_grid, datatype=0, b
     fig = visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index)
   elif datatype==3:
     fig = visualize_results_3d_custom(src_batch, tar_batch, tar_est, def_grid, batch_index, index)
+    
   #datatype 0  uses the matplotlib library
   if save_path and datatype == 0:
     print(f"Visualize_results_3d: Image saved to path {save_path}")
