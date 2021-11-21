@@ -170,7 +170,7 @@ if __name__ == '__main__':
   if args.command == 'train':
     #load the target model
     model_obj_path = model_path + args.name + '.pt'
-    model = torch.load(model_obj_path).to(config_3d.DEVICE)
+    model = torch.load(model_obj_path, map_location=torch.device('cpu')).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
     tr, val = load_ds(data_idx)
     tr.to(config_3d.DEVICE)
@@ -218,12 +218,12 @@ if __name__ == '__main__':
       
     #a custom visualization routine designed for research purposes 
     elif args.visualize == 'custom':
-      #for mesh visualization, we need to set get_mesh=True
+      #for mesh visualization, we need to set get_mesh=True, get_for_grid=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
           val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_src_mesh=True, get_tar_pt=True)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
-      result_checker.update(get_src_mesh=True, get_tar_pt = True)
+      result_checker.update(get_src_mesh=True, get_tar_pt = True, get_for_grid=True)
       result_checker.warp_mesh()
       result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
     #default: voxel visualization

@@ -10,7 +10,7 @@ from . import ops_3d, model
 class cumsum_layer_3d(nn.Module):
   def __init__(self, grid_size, vox_size, checker_board = False):
     super().__init__()
-    self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear')
+    self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear', align_corners=True)
     self.grid_offset_x = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True) 
     self.grid_offset_y = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True)
     self.grid_offset_z = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True)
@@ -22,10 +22,10 @@ class cumsum_layer_3d(nn.Module):
   def forward(self, x):
     #perform the cumsum operation to restore the original grid from the differential grid
     x = ops_3d.cumsum_3d(x, self.grid_offset_x, self.grid_offset_y, self.grid_offset_z)
+
     #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
     x = self.upsampler(x)
     #shape (N,C,D,H,W)
-
     return x
     
     

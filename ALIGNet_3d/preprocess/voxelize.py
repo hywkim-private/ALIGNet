@@ -112,7 +112,7 @@ def voxelize_pointclouds(pointcloud, voxel_num):
       if coord_z == voxel_num_z:
         coord_z -= 1
       volume[coord_x, coord_y, coord_z] = 1
-    volume = fill_enclosed_voxels(volume, voxel_num_x)
+    #volume = fill_enclosed_voxels(volume, voxel_num_x)
     volume_list.append(volume)
   volume_tensor = torch.stack(volume_list,axis=0)
   return volume_tensor

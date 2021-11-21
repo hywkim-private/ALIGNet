@@ -2,7 +2,7 @@
 import torch
 import numpy as np
 import math
-from scipy.interpolate import interpn
+from scipy.interpolate import interpn, griddata
 from scipy.ndimage import affine_transform
 
 from torch.nn.functional import grid_sample
@@ -59,11 +59,11 @@ def interpolate_3d_mesh(meshes, grids, vox_size):
   y_points = np.linspace(-1, 1,32)
   z_points = np.linspace(-1, 1,32)
   points = (x_points, y_points, z_points)
-  meshes = np.flip(meshes,1)
+  #meshes = np.flip(meshes,1)
   #define the interpolation function along x, y, and z axis
-  z_verts = interpn(points, grids[0], meshes, fill_value=0)
-  y_verts = interpn(points, grids[1], meshes, fill_value=0)
-  x_verts = interpn(points, grids[2], meshes, fill_value=0)
+  x_verts = interpn(points, grids[0], meshes)
+  y_verts = interpn(points, grids[1], meshes)
+  z_verts = interpn(points, grids[2], meshes)
   deformed_batch = []
   mesh_list = []
   for i in range(len(x_verts)):
@@ -82,17 +82,17 @@ def interpolate_3d_mesh(meshes, grids, vox_size):
 #the interpolated location of the target value
 def interp_1d( reg_grid, warp_grid, window, target_point):
   min_i, max_i = window
-  min_p = warp_grid[min_i]
-  max_p = warp_grid[max_i]
+  min_p = reg_grid[min_i]
+  max_p = reg_grid[max_i]
   reg_space = reg_grid[1]-reg_grid[0]
   while max_p-min_p == 0:
     #print(f"min_p and max_p: {min_i}, {max_i}")
     #if max_i == len(warp_grid):
     return interp_1d(reg_grid, warp_grid, (min_i,max_i), target_point)
-  interp_weight = (target_point - min_p)/(max_p - min_p)
+  interp_weight = (max_p - target_point)/(max_p - min_p)
   #print(f"min_p:{min_p}, max_p:{max_p}, interp_weight:{interp_weight}")
   #interpolated location of the target_Point
-  interp_loc = reg_grid[min_i] + interp_weight * reg_space
+  interp_loc = reg_grid[max_i] - interp_weight * reg_space
   #print(f"interp_loc: {interp_loc}")
   return interp_loc
 
@@ -100,17 +100,17 @@ def interp_1d( reg_grid, warp_grid, window, target_point):
 #in this case window indicates second rightmost and the rightmost value
 def exterp_1d_ledge(reg_grid, warp_grid, window, target_point):
   min_i, max_i = window
-  min_p = warp_grid[min_i]
-  max_p = warp_grid[max_i]
+  min_p = reg_grid[min_i]
+  max_p = reg_grid[max_i]
   reg_space = reg_grid[1]-reg_grid[0]
   while math.isclose(min_p,max_p,abs_tol=1e-6):
     #print(f"min_p and max_p: {min_i}, {max_i}")
     max_i += 1
     return exterp_1d_ledge(reg_grid, warp_grid, (min_i,max_i), target_point)
   #this will be a negative value
-  exterp_weight = (min_p - target_point)/(max_p - target_point)
+  exterp_weight = (min_p - target_point)/(max_p - min_P)
   #interpolated location of the target_Point
-  exterp_loc = reg_grid[min_i] - exterp_weight * reg_space
+  exterp_loc = reg_grid[min_i] + exterp_weight * reg_space
   return exterp_loc
 
 #the variation of interp_1d for values in the right edge
@@ -131,6 +131,7 @@ def exterp_1d_redge(reg_grid, warp_grid, window, target_point):
   exterp_loc = reg_grid[max_i] - exterp_weight * reg_space
   return exterp_loc
   
+
 #given the 3d backward warp mesh X,Y,Z
 #get the forward warp field
 #input
@@ -141,122 +142,26 @@ def convert_to_forward_warp(X,Y,Z):
   max_idx = len(X) - 1
   #define the regular grid
   ls = np.linspace(-1, 1,32)
+  space = ls[1] - ls[0]
+  
   y_reg, x_reg,z_reg = np.meshgrid(ls,ls,ls)
+  #minimum value of the regular grid
+  min_reg = x_reg[0]
+  #maximum value of the regular grid
+  max_reg = x_reg[max_idx]
   x_fr = np.zeros([len(X), len(X), len(X)])
   y_fr = np.zeros([len(X), len(X), len(X)])
   z_fr = np.zeros([len(X), len(X), len(X)])
-  #the spacing of the regular grid
-  reg_space = ls[1] - ls[2]
   for i in range(len(X)):
-    for j in range(len(X)):
-      for k in range(len(X)):
-        #if the diff value is positive and smaller than regular linspace, we define it as being placed at the correct range
-        #x_win_set defines whether or not the window range for x has been found
-        idx_x = k 
-        x_win_set = False
-        #specifies whether the given idx is an edge
-        x_edge_r = False
-        x_edge_l = False
-        while x_win_set == False:
-          if x_reg[k,i,j] > X[max_idx,i,j]:
-            x_win = (max_idx-1, max_idx)
-            x_edge_r = True 
-            x_win_set = True 
-          elif x_reg[k,i,j] < X[0,i,j]:
-            x_win = (0, 1)
-            x_edge_l = True 
-            x_win_set = True
-          elif x_reg[k,i,j] >= X[idx_x,i,j] and x_reg[k,i,j] <= X[idx_x+1,i,j]:
-            #define the window of range wherein x value lies
-            x_win = (idx_x, idx_x+1)
-            #set x_win_set to True in order to move on
-            x_win_set = True
-          elif x_reg[k,i,j] < X[idx_x,i,j]:
-            idx_x -= 1
-          else:
-            #if not, move the window to find the appropriate range
-            #case for when diff is negative (x reg value is on smaller than the min range of window)
-            idx_x += 1
-     
-        #need a different  function for the right edge case
-        if x_edge_r:
-          x_fr[k,i,j] = exterp_1d_redge(x_reg[:,i,j],X[:,i,j],(idx_x-1, idx_x), x_reg[k,i,j])
-        elif x_edge_l:
-          x_fr[k,i,j] = exterp_1d_ledge(x_reg[:,i,j],X[:,i,j],x_win, x_reg[k,i,j])
-        elif x_win_set:
-          x_fr[k,i,j] = interp_1d(x_reg[:,i,j],X[:,i,j], x_win, x_reg[k,i,j])
-        #if the diff value is positive and smaller than regular linspace, we define it as being placed at the correct range
-        #y_win_set defines whether or not the window range for x has been found
+    for j in range(len(Y)):
+      x_fr[:,i,j] = griddata(X[:,i,j], x_reg[:,i,j],x_reg[:,i,j], fill_value="extrapolate", rescale=True)
+      y_fr[i,:,j] = griddata(Y[i,:,j], y_reg[i,:,j],y_reg[i,:,j],fill_value="extrapolate", rescale=True)
+      z_fr[i,j,:] = griddata(Z[i,j,:], z_reg[i,j,:],z_reg[i,j,:],fill_value="extrapolate", rescale=True)
+      print(x_fr)
+      exit()
+  #account and solve for the out of box err => filled with nan
 
-        idx_y = k 
-        y_win_set = False
-        #specifies whether the given idx is an edge
-        y_edge_r = False
-        y_edge_l = False 
-        while y_win_set == False:
-          if y_reg[i,k,j] > Y[i,max_idx, j]:
-            y_win = (max_idx-1, max_idx)
-            y_edge_r = True 
-            y_win_set = True 
-          elif y_reg[i,k,j] < Y[i,0, j]:
-            y_win = (0, 1)
-            y_win_set = True
-            y_edge_l = True
-          elif y_reg[i,k,j] >= Y[i,idx_y, j] and y_reg[i,k,j] <= Y[i,idx_y+1,j]:
-            #define the window of range wherein x value lies
-            y_win = (idx_y, idx_y+1)
-            #set x_win_set to True in order to move on
-            y_win_set = True 
-          elif y_reg[i,k,j] < Y[i,idx_y,j]:
-              idx_y -= 1
-          else:
-            idx_y += 1
-            #if not, move the window to find the appropriate range
-            #case for when diff is negative (x reg value is on smaller than the min range of window)
-        #need a different  function for the right edge case
-        if y_edge_r:
-          y_fr[i,k,j] = exterp_1d_redge(y_reg[i,:,j],Y[i,:,j],(idx_y-1, idx_y), y_reg[i,k,j])
-        elif y_edge_l:
-          y_fr[i,k,j] = exterp_1d_ledge(y_reg[i,:,j], Y[i,:,j], y_win, y_reg[i,k,j])
-        elif y_win_set:
-          y_fr[i,k,j] = interp_1d(y_reg[i,:,j], Y[i,:,j], y_win, y_reg[i,k,j])
-
-        #if the diff value is positive and smaller than regular linspace, we define it as being placed at the correct range
-        #x_win_set defines whether or not the window range for x has been found
-        idx_z = k 
-        z_win_set = False
-        #specifies whether the given idx is an edge
-        z_edge_r = False
-        z_edge_l = False
-        while z_win_set == False:
-          if z_reg[i,j,k] > Z[i, j, max_idx]:
-            z_win = (max_idx-1, max_idx)
-            z_edge_r = True 
-            z_win_set = True 
-          elif z_reg[i,j,k] < Z[i,j,0]:
-            z_win = (0, 1)
-            z_win_set = True 
-            z_edge_l = True 
-          elif z_reg[i,j,k] >= Z[i,j,idx_z] and z_reg[i,j,k] <= Z[i,j,idx_z+1]:
-            #define the window of range wherein x value lies
-            z_win = (idx_z,idx_z+1)
-            #set x_win_set to True in order to move on
-            z_win_set = True 
-          elif z_reg[i,j,k] < Z[i,j,idx_z]:
-            idx_z -= 1
-          else:
-            #if not, move the window to find the appropriate range
-            #case for when diff is negative (x reg value is on smaller than the min range of window)
-            idx_z += 1
-            #case for when x diff is bigger than reg space 
-
-        #need a different  function for the right edge case
-        if z_edge_r:
-          z_fr[i,j,k] = exterp_1d_redge(z_reg[i,j,:],Z[i,j,:],(idx_z-1, idx_z), z_reg[i,j,k])
-        elif z_edge_l:
-          z_fr[i,j,k] = exterp_1d_ledge(z_reg[i,j,:],Z[i,j,:], z_win, z_reg[i,j,k])
-        elif z_win_set:
-          z_fr[i,j,k] = interp_1d(z_reg[i,j,:],Z[i,j,:], z_win, z_reg[i,j,k])
+  
   #return the forward warp grids
   return x_fr, y_fr, z_fr
               

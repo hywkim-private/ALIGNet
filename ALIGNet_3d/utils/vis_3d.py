@@ -17,6 +17,8 @@ from torch.utils.data import Dataset, DataLoader
 def sample_step(ts, step):
   new_len = int(len(ts)/step)
   index = np.linspace(0, len(ts)-1, new_len)
+  index = np.rint(index)
+  index = index.astype(np.int)
   new_ts = ts[index]
   new_ts = new_ts[:, index]
   new_ts = new_ts[:, :, index]
@@ -329,9 +331,9 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch
 
     #define the regular (undeformed grid)
     #downsample the deformation grids
-    def_i = sample_step(def_grid[0],8).cpu()
-    def_j = sample_step(def_grid[1],8).cpu()
-    def_k = sample_step(def_grid[2],8).cpu()
+    def_i = sample_step(def_grid[0],8)
+    def_j = sample_step(def_grid[1],8)
+    def_k = sample_step(def_grid[2],8)
     def_lines = get_meshgrid_fig(def_k, def_j, def_i)
     #define the deformation grid
     ls = np.linspace(-1,1,4)

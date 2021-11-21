@@ -77,7 +77,7 @@ def initialize_config():
     AUGMENT_TIMES_TR = 2
     AUGMENT_TIMES_VAL = 1
     #parameters for the warp-field/grid
-    GRID_SIZE = 7
+    GRID_SIZE = 16
     VOX_SIZE = 32
     
     #index numbers for data types
