@@ -8,25 +8,25 @@ from . import ops_3d, model
 
 #perform cumsum operation, then upsample the grid to vox_size
 class cumsum_layer_3d(nn.Module):
-  def __init__(self, grid_size, vox_size, checker_board = False):
+  def __init__(self, grid_size, vox_size):
     super().__init__()
-    self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear', align_corners=True)
-    self.grid_offset_x = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True) 
-    self.grid_offset_y = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True)
-    self.grid_offset_z = torch.tensor(float(-1-2/(grid_size-1)), requires_grad=True)
-    self.grid_offset_x = nn.Parameter(self.grid_offset_x)
-    self.grid_offset_y = nn.Parameter(self.grid_offset_y)
-    self.grid_offset_z = nn.Parameter(self.grid_offset_z)
+    self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear')
+    self.grid_offset_x = torch.tensor(float(-1-2/(grid_size-1))) 
+    self.grid_offset_y = torch.tensor(float(-1-2/(grid_size-1)))
+    self.grid_offset_z = torch.tensor(float(-1-2/(grid_size-1)))
+    #self.grid_offset_x = nn.Parameter(self.grid_offset_x)
+    #self.grid_offset_y = nn.Parameter(self.grid_offset_y)
+    #self.grid_offset_z = nn.Parameter(self.grid_offset_z)
     self.grid_size = grid_size
     
   def forward(self, x):
     #perform the cumsum operation to restore the original grid from the differential grid
-    x = ops_3d.cumsum_3d(x, self.grid_offset_x, self.grid_offset_y, self.grid_offset_z)
-
+    def_grid = ops_3d.cumsum_3d(x, self.grid_offset_x, self.grid_offset_y, self.grid_offset_z)
     #Upsample the grid_size x grid_size warp field to image_size x image_size warp field
-    x = self.upsampler(x)
+    def_grid = self.upsampler(def_grid)
+    
     #shape (N,C,D,H,W)
-    return x
+    return def_grid
     
     
 class warp_layer_3d(nn.Module):
@@ -64,14 +64,11 @@ class ALIGNet_3d(nn.Module):
     self.warp_layer = warp_layer_3d()
     self.axial_layer = axial_layer_3d(grid_size)
   #returns a differential grid
-  def forward(self, x):
+  def forward(self, x, src):
     x = self.conv_layer(x)
-    x = self.axial_layer(x)
-    return x
-  def cumsum(self, diff_grid):
-    x = self.cumsum_layer(diff_grid)
-    return x 
-  def warp(self, def_grid, src_batch):
-    x = self.warp_layer(def_grid, src_batch)
-    return x
+    diff_grid = self.axial_layer(x)
+    def_grid = self.cumsum_layer(diff_grid)
+    tar_est = self.warp_layer(def_grid, src)
+    return diff_grid, def_grid, tar_est
 
+   

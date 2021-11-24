@@ -24,7 +24,7 @@ def L_TV_Loss_3d(diff_grid, grid_size, init_grid, lambda_):
   
 def get_loss_3d(tar_img, tar_est, diff_grid, init_grid, grid_size, vox_size):
   L2_Loss_ = L2_Loss_3d(tar_img, tar_est, vox_size)
-  L_TV_Loss_ = L_TV_Loss_3d(diff_grid, grid_size, init_grid, 1e-4)
+  L_TV_Loss_ = L_TV_Loss_3d(diff_grid, grid_size, init_grid, 1e-3/5)
   loss = L_TV_Loss_ + L2_Loss_
   return loss
     

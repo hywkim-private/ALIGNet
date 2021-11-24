@@ -61,6 +61,11 @@ from utils.vis_3d import visualize_results_3d, visualize_pointclouds, visualize_
 #ONLY THING LEFT TO CHECK: IF THE TWO DEF_GRIDS ARE EQUAL (RIGHT AFTER RETURNS AND BEFORE INTERPOLATING)
 #IF NOT, PRBLM WITH THE INTERPOLATE
 
+#TODO: THE MAIN PROBLEM WAS WITH THE OFFSET VALUE
+#NOW THE PROBLEM LIES IN X_DEFORMATION GRID (VERTICAL SHIFT), NEAR THE CENTER, HAS SOME WEIRD PROTRUDED VALUES
+#MY TENTATIVE GUESS IS THAT IT HAS TO DO WITH VOXELS BEING HOLLOW SO CHECK THAT AND IF THATS NOT THE CASE
+#CHECK IF THE DIFF GRID LOSS IS WORKING PROPERLY 
+
 #__init__ input
 #model: ALIGNet_3d model
 #valid_tar: target dataset
@@ -229,10 +234,8 @@ class result_checker_3d():
   def validate_3d(self, model, source_image, target_image, grid_size, get_for_grid=False):
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3,4])
-    diff_grid = model.forward(input_image)
+    diff_grid, def_grid, tar_est= model.forward(input_image, source_image)
     #we will use def grid to apply warp directly to mesh
-    def_grid = model.cumsum(diff_grid)
-    tar_est = model.warp(def_grid, source_image)
     tar_est = tar_est.squeeze(dim=1)
     #convert the backward ward into forward ward
     g = def_grid.clone() 
@@ -242,6 +245,7 @@ class result_checker_3d():
     #calculate the loss for the image
     init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
     loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, init_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+    for_grid_list = []
     if get_for_grid:
       i=0
       for g_ in g:
@@ -249,8 +253,9 @@ class result_checker_3d():
         for_grid = np.stack([x_fr, y_fr, z_fr])
         g[i] = for_grid
         i+=1
-      for_grid = g
-      return tar_est, diff_grid, def_grid, for_grid, loss
+        for_grid_list.append(for_grid)
+      for_grid_batch = np.stack(for_grid_list)
+      return tar_est, diff_grid, def_grid, for_grid_batch, loss
     return tar_est, diff_grid, def_grid, loss
   #run loop for the dataloaders to run the validate() operation
   #if get_mesh param is set to true, also return the mesh representation of src dataset (returns 7 results instead of 6 )
@@ -298,7 +303,6 @@ class result_checker_3d():
       if get_for_grid:
         tar_est, diff_grid, def_grid, for_grid, loss = self.validate_3d(model, source, target, grid_size,get_for_grid=get_for_grid)
         for_grid_list.append(for_grid)
-
       else: 
         tar_est, diff_grid, def_grid, loss = self.validate_3d(model, source, target, grid_size)
       target_list.append(target)

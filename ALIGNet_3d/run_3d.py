@@ -46,9 +46,7 @@ def run_epoch_3d(model, optimizer,  src_loader, tar_loader, grid_size):
       #input should be of shape (N,C,D,)
       input_image  = input_image.permute([1,0,2,3,4])
       #run the network
-      diff_grid = model.forward(input_image)
-      def_grid = model.cumsum(diff_grid)
-      tar_est = model.warp(def_grid, src_batch)
+      diff_grid, def_grid, tar_est = model.forward(input_image, src_batch)
       tar_est = tar_est.squeeze(dim=1)
       init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
       loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, init_grid, config_3d.GRID_SIZE,  config_3d.VOX_SIZE)
@@ -72,7 +70,6 @@ def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, grap
     print("Printing graph..")
     result_checker.print_graph(save_path = './' + model.name + '/outputs/loss_graphs/')"""
   
-
 
 
 
