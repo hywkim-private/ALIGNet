@@ -72,10 +72,10 @@ def interpolate_3d_mesh(meshes, grids, vox_size):
   
   #define the interpolation function along x, y, and z axis
   #problem:---------this fucker-----------------
-  x_interp = RegularGridInterpolator(points, grids[0], fill_value=0, method='nearest')
+  x_interp = RegularGridInterpolator(points, grids[0])
   #------------------------------------------------------
-  y_interp = RegularGridInterpolator(points, grids[1], fill_value=0, method='nearest')
-  z_interp = RegularGridInterpolator(points, grids[2], fill_value=0, method='nearest')
+  y_interp = RegularGridInterpolator(points, grids[1])
+  z_interp = RegularGridInterpolator(points, grids[2])
   z_verts = z_interp(meshes)
   y_verts = y_interp(meshes)
   x_verts = x_interp(meshes)

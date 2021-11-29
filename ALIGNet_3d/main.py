@@ -2,10 +2,10 @@ import argparse
 import os
 import torch 
 import numpy as np
-from model import io_3d
 import run_3d, config_3d, model, preprocess, test, validate_3d
 from model import io_3d, ops_3d, network_3d
 from preprocess import datasets
+import config_parse 
 
 #given a string of datatype, return its appropriate index
 def get_data_idx(datatype_str):
@@ -140,9 +140,9 @@ if __name__ == '__main__':
       exit()
     save_path = config_3d.DATA_PATH + args.name
     #make new  model
-    model_idx = 1 if not args.model else args.model
-    init_grid = ops_3d.init_grid_3d(config_3d.GRID_SIZE).view(-1).to(config_3d.DEVICE)
-    model = network_3d.ALIGNet_3d(args.name, config_3d.GRID_SIZE, config_3d.VOX_SIZE, init_grid, model_idx).to(config_3d.DEVICE)
+    #load and save the model configuration
+    config = config_parse.load_config('./init_config.yaml')
+    config_parse.render_model_config(config)
     
     #make a directory to save model and dataset
     if not os.path.exists(config_3d.MODEL_PATH + args.name):
@@ -150,6 +150,11 @@ if __name__ == '__main__':
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/loss_graphs')
         os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/images')
+        #write model configuration 
+        config_parse.write_model_config(config, model_path)
+        
+    init_grid = ops_3d.init_grid_3d(config_3d.GRID_SIZE).view(-1).to(config_3d.DEVICE)
+    model = network_3d.ALIGNet_3d(config_3d.MODEL_IDX, config_3d.GRID_SIZE, config_3d.VOX_SIZE, init_grid, config_3d.MAXFEAT).to(config_3d.DEVICE)
     tr, val = load_ds(data_idx)
     tr.to(config_3d.DEVICE)
     val.to(config_3d.DEVICE)
@@ -168,7 +173,11 @@ if __name__ == '__main__':
       exit()
       
   if args.command == 'train':
-    #load the target model
+    
+    #load the target model configuartions 
+    config = config_parse.load_config(model_path + 'model_cfg.yaml')
+    #save model configurations to config_3d.py 
+    config_parse.render_model_config(config)
     model_obj_path = model_path + args.name + '.pt'
     model = torch.load(model_obj_path, map_location=torch.device('cpu')).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)

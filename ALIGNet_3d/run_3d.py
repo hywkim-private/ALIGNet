@@ -56,7 +56,7 @@ def run_epoch_3d(model, optimizer,  src_loader, tar_loader, grid_size):
       loss_list.append(loss)
   return loss_list
 
-def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, graph_loss=False):
+def run_model(model, src_loader, tar_loader, grid_size, result_checker=None, graph_loss=False):
   optimizer = optim.Adam(model.parameters(), lr=1e-3)
   epoch_loss = []
   for i in range(config_3d.EPOCHS):
@@ -76,8 +76,8 @@ def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, grap
 #train the data
 #data_index 0 = vase, 1= plane
 #iter is the number of iterations
-def train_3d(model, model_path, iter_t, tr, model_name, result_checker=None, graph_loss=False):
-  for i in range(iter_t):
+def train_3d(model, model_path, tr, model_name, result_checker=None, graph_loss=False):
+  for i in range(config_3d.ITER):
     tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, augment_times=config_3d.AUGMENT_TIMES_TR)
     tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
     tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
