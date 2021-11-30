@@ -249,7 +249,7 @@ class result_checker_3d():
     
     #calculate the loss for the image
     init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
-    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, init_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, init_grid, config_3d.LAMBDA, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
     for_grid_list = []
     if get_for_grid:
       i=0

@@ -49,15 +49,15 @@ def run_epoch_3d(model, optimizer,  src_loader, tar_loader, grid_size):
       diff_grid, def_grid, tar_est = model.forward(input_image, src_batch)
       tar_est = tar_est.squeeze(dim=1)
       init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
-      loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, init_grid, config_3d.GRID_SIZE,  config_3d.VOX_SIZE)
+      loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, init_grid, config_3d.LAMBDA, config_3d.GRID_SIZE,  config_3d.VOX_SIZE)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
       loss_list.append(loss)
   return loss_list
 
-def run_model(model, src_loader, tar_loader, grid_size, result_checker=None, graph_loss=False):
-  optimizer = optim.Adam(model.parameters(), lr=1e-3)
+def run_model(model,  src_loader, tar_loader, grid_size, result_checker=None, graph_loss=False):
+  optimizer = optim.Adam(model.parameters(), lr=config_3d.STEP)
   epoch_loss = []
   for i in range(config_3d.EPOCHS):
     loss_list = run_epoch_3d(model, optimizer, src_loader, tar_loader, grid_size)
@@ -76,13 +76,13 @@ def run_model(model, src_loader, tar_loader, grid_size, result_checker=None, gra
 #train the data
 #data_index 0 = vase, 1= plane
 #iter is the number of iterations
-def train_3d(model, model_path, tr, model_name, result_checker=None, graph_loss=False):
+def train_3d(model, model_path, tr, result_checker=None, graph_loss=False):
   for i in range(config_3d.ITER):
     tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, augment_times=config_3d.AUGMENT_TIMES_TR)
     tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
     tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
     tr_tar = tr_tar_dl
     tr_src = tr_src_dl
-    run_model(model, tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
-    io_3d.save_model(model, model_path, model_name+'.pt')
+    run_model(model,tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
+    io_3d.save_model(model, model_path, 'model.pt')
     

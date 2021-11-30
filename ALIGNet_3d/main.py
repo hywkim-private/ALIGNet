@@ -7,6 +7,11 @@ from model import io_3d, ops_3d, network_3d
 from preprocess import datasets
 import config_parse 
 
+
+#TODO: UPDATE  THE DATATYPE CHECKING CAPABIILITY USING DATATYPE AND DATA IDX IN INIT_CONFIG
+#FIRST ENABLE CONFIG FOR EACH DATA FILES
+#THEN UPDATE THE CORRESPODING ERROR CHECKING CAPABILITIES
+
 #given a string of datatype, return its appropriate index
 def get_data_idx(datatype_str):
   dtype = 0
@@ -35,11 +40,10 @@ def get_ds(file_path, tr_size, val_size, total_num, pt_sample):
   return tr, val
   
 #common code snippet--run the train iteration loop
-def train_model(args, tr, val, model_path):
+def train_model(tr, val, model_path):
   #save the iter variable as default or specified by the user
-  iter_t = 10
-  if args.iter: 
-    iter_t = args.iter
+ 
+  iter_t = config_3d.ITER
   #make an overfit check if specified by config 
   result_check = None 
   result_check_path = config_3d.MODEL_PATH + args.name + '/result_checker'
@@ -51,7 +55,7 @@ def train_model(args, tr, val, model_path):
       obj = preprocess.io_3d.load_obj(result_check_path)
     else:
       result_check = validate_3d.result_checker_3d(model, val_tar, val_src)
-  run_3d.train_3d(model, model_path, iter_t, tr, args.name, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
+  run_3d.train_3d(model, model_path, tr, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
   #model is already saved in the run operation
   io_3d.save_obj(result_check, result_check_path)
 
@@ -89,8 +93,9 @@ if __name__ == '__main__':
   valid.add_argument("-d", "--data", type=int, help="the index of the dataset=> default:0")
 
   args = ap.parse_args()
-  
-   
+  #load the configuartion file
+  config = config_parse.load_config('init_config.yaml')
+
   #check the type of data (for now, we will only support plane--add more)
   if args.type == 'plane':
     data_path = config_3d.DATA_PATH_PLANE
@@ -98,10 +103,13 @@ if __name__ == '__main__':
 
   #if new data, download data, create, and save
   if args.command == 'data': 
+    #load config
+    config = config_parse.load_config('./init_config.yaml')
+    config_parse.render_data_config(config)
     #first, check for existing directory and if not, create a new directory to store data 
     #we assume a all-inclusive imagenet dataset, so only need to download once 
     #TODO: add other datatypes as if statement
-    load_path = config_3d.DATA_PATH_PLANE
+    load_path = data_path 
     save_path = config_3d.DATA_PATH + 'datasets/' + args.type + '/'
     url = config_3d.URL_DATA
       
@@ -112,6 +120,8 @@ if __name__ == '__main__':
     save_path = io_3d.latest_filename_data(save_path) + "/"
     #make a new data idx directory
     os.makedirs(save_path)
+    #write configuration file
+    write_data_config(config, save_path)
     #download only if the download flag is set
     if args.download:
       model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
@@ -122,14 +132,23 @@ if __name__ == '__main__':
     model.io_3d.save_ds(tr, 'tr', save_path)
     model.io_3d.save_ds(val, 'val', save_path)
     
-  else:
-    #get the path to the target model
-    model_path = config_3d.MODEL_PATH + args.name + '/'
-    model_obj_path = model_path + args.name + '.pt'
-    #update the data idx
-    data_idx = 0 if args.data is None else args.data
+
   #if new model, download and create dataset, make new model
   if args.command == 'new':
+    #make new  model
+    #----------------handle config---------------------
+    #load and save the model configuration
+    config = config_parse.load_config('./init_config.yaml')
+    #laod train configuration from the init_config file
+    config_parse.render_train_config(config)
+    #from the train config, find the model path and load its config
+    model_config = config_parse.load_config(config_3d.MODEL_PATH + 'model_cfg.yaml')
+    config_parse.render_model_config(model_config)
+    #from the model config, find the data configurations and load its config 
+    data_path = config_3d.DATA_PATH + str(config_3d.DATA_IDX) +'/'
+    data_config = config_parse.load_config(data_path) 
+    config_parse.render_data_config(data_config)
+    #----------------------------------------------------
     #first check if the dataset exists
     if not os.path.exists(data_path):
       print(f"Dataset not found in path {data_path}: create dataset using [data] argument")
@@ -138,27 +157,23 @@ if __name__ == '__main__':
     if os.path.exists(model_path):
       print(f"Model {args.name} already exists in {model_path}: use [train] argument to do additional training or create a model with different name")
       exit()
-    save_path = config_3d.DATA_PATH + args.name
-    #make new  model
-    #load and save the model configuration
-    config = config_parse.load_config('./init_config.yaml')
-    config_parse.render_model_config(config)
-    
     #make a directory to save model and dataset
-    if not os.path.exists(config_3d.MODEL_PATH + args.name):
-        os.makedirs(config_3d.MODEL_PATH + args.name)
-        os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs')
-        os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/loss_graphs')
-        os.makedirs(config_3d.MODEL_PATH + args.name + '/outputs/images')
+    if not os.path.exists(config_3d.MODEL_PATH):
+        os.makedirs(config_3d.MODEL_PATH)
+        os.makedirs(config_3d.MODEL_PATH + 'outputs/')
+        os.makedirs(config_3d.MODEL_PATH + 'outputs/loss_graphs/')
+        os.makedirs(config_3d.MODEL_PATH + 'outputs/images/')
         #write model configuration 
-        config_parse.write_model_config(config, model_path)
+        config_parse.write_model_config(config, config_3d.MODEL_PATH)
         
     init_grid = ops_3d.init_grid_3d(config_3d.GRID_SIZE).view(-1).to(config_3d.DEVICE)
     model = network_3d.ALIGNet_3d(config_3d.MODEL_IDX, config_3d.GRID_SIZE, config_3d.VOX_SIZE, init_grid, config_3d.MAXFEAT).to(config_3d.DEVICE)
-    tr, val = load_ds(data_idx)
+    #load data and its configuarations
+    data_path = config_3d.DATA_PATH + str(config_3d.DATA_IDX) +'/'
+    tr, val = load_ds(config_3d.DATA_IDX)
     tr.to(config_3d.DEVICE)
     val.to(config_3d.DEVICE)
-    train_model(args, tr, val, model_path)
+    train_model(tr, val, config_3d.MODEL_PATH)
     
   #common operation for train and valid 
   elif args.command == 'train' or args.command == 'valid':
@@ -175,25 +190,40 @@ if __name__ == '__main__':
   if args.command == 'train':
     
     #load the target model configuartions 
-    config = config_parse.load_config(model_path + 'model_cfg.yaml')
-    #save model configurations to config_3d.py 
-    config_parse.render_model_config(config)
-    model_obj_path = model_path + args.name + '.pt'
-    model = torch.load(model_obj_path, map_location=torch.device('cpu')).to(config_3d.DEVICE)
+    #--------------------------handle config----------------------
+    #render the model configurations
+    model_config = config_parse.load_config(config_3d.MODEL_PATH + 'model_cfg.yaml')
+    config_parse.render_model_config(model_config)
+    config_parse.render_train_config(config)
+    #--------------------------------------------------------------
+    model = torch.load(config.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
-    tr, val = load_ds(data_idx)
+    tr, val = load_ds(config_3d.DATA_IDX)
     tr.to(config_3d.DEVICE)
     val.to(config_3d.DEVICE)
-    train_model(args, tr, val, model_path)
+    train_model(tr, val, config_3d.MODEL_PATH)
     
   if args.command == 'valid':
+    
+    #--------------------------handle config----------------------
+    #render train configurations 
+    config_parse.render_train_config(config)
+    #render model configurations from model_cfg.yaml found in the model path
+    model_config = config_parse.load_config(config_3d.MODEL_PATH + 'model_cfg.yaml')
+    config_parse.render_model_config(model_config)
+    #render valid configurations from init_config 
+    config_parse.render_valid_config(config)
+    #--------------------------------------------------------------
+    
     #load the previous model
-    model = torch.load(model_obj_path, map_location=torch.device('cpu')).to(config_3d.DEVICE)
+    model = torch.load(config_3d.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config_3d.DEVICE)
+    #load the target model configuartions 
+    model_config = config_parse.load_config(config_3d.MODEL_PATH + 'model_cfg.yaml')
     #path to save the visualized image 
-    image_path = model_path + 'outputs/images/'
+    image_path = config_3d.MODEL_PATH + 'outputs/images/'
     image_path = io_3d.latest_filename_png(image_path)
     #load the neccessary datasets
-    tr, val = load_ds(data_idx)
+    tr, val = load_ds(config_3d.DATA_IDX)
     tr.to(config_3d.DEVICE)
     val.to(config_3d.DEVICE)
     #get the target and val sets

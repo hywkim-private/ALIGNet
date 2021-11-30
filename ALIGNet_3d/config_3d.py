@@ -3,31 +3,42 @@ import torch
 import os
 
 def initialize_config():
-        #define hyper parameters 
+    #general configurations
+    #USE_CUDA, DEVICE, CPU  are the only parameters that will be initialized in config_3ds
     global USE_CUDA
     global DEVICE
     global CPU
+    #parameters for train config 
+    global MODEL_PATH
     global EPOCHS 
     global BATCH_SIZE 
-    
-    global TARGET_PROPORTION
-    global TARGET_PROPORTION_VAL
-    global TARGET_PROPORTION_TEST 
-    global TRAIN_SIZE
-    global VAL_SIZE
-
-    #parameters for mask operation
+    global STEP
+    global ITER
     global MASK_SIZE
     global AUGMENT_TIMES_TR
+
+    #needed for both train and valid
     global AUGMENT_TIMES_VAL
+
+    #parameters for valid 
+    global 
     
+    #parameters for data config 
+    global TARGET_PROPORTION
+    global TARGET_PROPORTION_VAL
+    global TRAIN_SIZE
+    global VAL_SIZE
+    #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
+    global DATA_PATH
+    global DATA_PATH_PLANE
+    #Specify the download url
+    global URL_DATA
+    global PT_SAMPLE
+
     
-    global MODEL_PATH
+    #parameters for model config
     #signifies which model to use 
     global MODEL_IDX
-    #path to save/load the model 
-    global MODEL_PATH_VASE
-    global MODEL_PATH_PLANE
     #parameters for the warp-field/grid
     global GRID_SIZE
     global VOX_SIZE
@@ -35,13 +46,10 @@ def initialize_config():
     global MAXFEAT
     global LAMBDA
     global LEARN_OFFSET
-
+    global DATA_IDX
+    global DATA_TYPE
     
-    #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
-    global DATA_PATH
-    global DATA_PATH_PLANE
-
-
+   
     
     #Specify the download url
     global URL_DATA
@@ -51,9 +59,7 @@ def initialize_config():
     global GRAPH_LOSS
     global RESULT_CHECK
     
-    global PT_SAMPLE
-    global NUM_SAMPLE
-    
+
     #path to initial yaml config file
     global CONFIG_PATH
 
