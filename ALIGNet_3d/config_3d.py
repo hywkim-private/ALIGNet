@@ -9,19 +9,20 @@ def initialize_config():
     global DEVICE
     global CPU
     #parameters for train config 
-    global MODEL_PATH
     global EPOCHS 
-    global BATCH_SIZE 
     global STEP
     global ITER
     global MASK_SIZE
     global AUGMENT_TIMES_TR
 
     #needed for both train and valid
+    global MODEL_PATH
+    global BATCH_SIZE 
     global AUGMENT_TIMES_VAL
 
     #parameters for valid 
-    global 
+    global NUM_SAMPLE 
+    global VISUALIZE_TYPE
     
     #parameters for data config 
     global TARGET_PROPORTION
@@ -37,6 +38,7 @@ def initialize_config():
 
     
     #parameters for model config
+    global MODEL_NAME
     #signifies which model to use 
     global MODEL_IDX
     #parameters for the warp-field/grid
@@ -46,7 +48,6 @@ def initialize_config():
     global MAXFEAT
     global LAMBDA
     global LEARN_OFFSET
-    global DATA_IDX
     global DATA_TYPE
     
    
@@ -68,49 +69,4 @@ def initialize_config():
     DEVICE = torch.device("cuda" if USE_CUDA else "cpu")
     CPU = torch.device('cpu')
     
-    
-    EPOCHS = 50
-    BATCH_SIZE = 20
-    
-    TARGET_PROPORTION = 0.5
-    TARGET_PROPORTION_VAL = 0.5
-    TARGET_PROPORTION_TEST = 0.5
-    TRAIN_SIZE = 300
-    VAL_SIZE = 30
-
-    #parameters for mask operation
-    MASK_SIZE = 60
-    AUGMENT_TIMES_TR = 2
-    AUGMENT_TIMES_VAL = 1
-    #parameters for the warp-field/grid
-    GRID_SIZE = 9
-    VOX_SIZE = 32
-    #number of features to train for the model 
-    MAXFEAT = 64
-    
-  
-    #path to save/load the model 
-    MODEL_PATH = './obj/'
-    #signifies which model to use 
-    MODEL_IDX = 2
-    
-    #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
-    DATA_PATH = './data/'
-    DATA_PATH_PLANE = os.path.join(DATA_PATH,'train/02691156/')
-
-    #Specify the download url
-    URL_DATA = 'http://shapenet.cs.stanford.edu/shapenet/obj-zip/SHREC16/train.zip'
-
-
-    #define parameters for the training loop
-    GRAPH_LOSS = True
-    RESULT_CHECK = True
-
-    #visualization parameters
-    #points to sample for the pointcloud
-    PT_SAMPLE = 10000
-    #number of samples to get from batch
-    NUM_SAMPLE = 10
-    
-    #path to initial yaml config file
-    CONFIG_PATH = 'model_config.yaml'
+   

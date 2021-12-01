@@ -10,15 +10,17 @@ from .conv import model3 as model
 
 #perform cumsum operation, then upsample the grid to vox_size
 class cumsum_layer_3d(nn.Module):
-  def __init__(self, grid_size, vox_size):
+  def __init__(self, grid_size, vox_size, learn_offset):
     super().__init__()
     self.upsampler = nn.Upsample(size = [vox_size,vox_size,vox_size], mode = 'trilinear', align_corners=True)
     self.grid_offset_x = torch.tensor(float(-1-2/(grid_size-1))) 
     self.grid_offset_y = torch.tensor(float(-1-2/(grid_size-1)))
     self.grid_offset_z = torch.tensor(float(-1-2/(grid_size-1)))
-    self.grid_offset_x = nn.Parameter(self.grid_offset_x)
-    self.grid_offset_y = nn.Parameter(self.grid_offset_y)
-    self.grid_offset_z = nn.Parameter(self.grid_offset_z)
+    #parameterize grid_offsets if learn_offset is True
+    if learn_offset:
+      self.grid_offset_x = nn.Parameter(self.grid_offset_x)
+      self.grid_offset_y = nn.Parameter(self.grid_offset_y)
+      self.grid_offset_z = nn.Parameter(self.grid_offset_z)
     self.grid_size = grid_size
     
   def forward(self, x):
@@ -56,7 +58,7 @@ class axial_layer_3d(nn.Module):
 
 #define the model class
 class ALIGNet_3d(nn.Module):
-  def __init__(self, model_idx, grid_size, vox_size, init_grid, maxfeat):
+  def __init__(self, model_idx, grid_size, vox_size, init_grid, maxfeat, learn_offset=False):
     super().__init__()
     #import the model according to the predefined config params
     if model_idx == 0:
@@ -66,7 +68,7 @@ class ALIGNet_3d(nn.Module):
     elif model_idx == 2: 
       from .conv import model3 as model
     self.conv_layer = model.model(init_grid, grid_size, maxfeat)
-    self.cumsum_layer = cumsum_layer_3d(grid_size, vox_size)
+    self.cumsum_layer = cumsum_layer_3d(grid_size, vox_size, learn_offset)
     self.warp_layer = warp_layer_3d()
     self.axial_layer = axial_layer_3d(grid_size)
   #returns a differential grid

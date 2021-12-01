@@ -78,10 +78,7 @@ def save_ds(ds, ds_name, ds_path):
   torch.save(ds, path)
   
 #load raw datasets from dir
-def load_ds(path, ds_type=0, ds_idx=0):
-  #TODO: add more datasets
-  ds_name = 'plane'
-  path = path + str(ds_idx) + '/'
+def load_ds(path):
   #if ds_index == 1:
     #ds_name = 'plane'
   tr = torch.load(os.path.join(path, 'tr.pt'))

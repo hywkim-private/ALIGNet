@@ -196,9 +196,12 @@ class Augment_3d(Dataset):
       pt_list = []
       for i in range(self.augment_times):
         pt_list.append(pointcloud)
-      self.pt_list = torch.utils.data.ConcatDataset(pt_list)
-    self.tar_list = torch.utils.data.ConcatDataset(tar_list)
-    self.aug_list = torch.utils.data.ConcatDataset(tar_list)
+      if self.is_aug:
+        self.pt_list = torch.utils.data.ConcatDataset(pt_list)
+    if self.is_aug:
+      self.tar_list = torch.utils.data.ConcatDataset(tar_list)
+      self.aug_list = torch.utils.data.ConcatDataset(tar_list)
+    
     self.vox_size = vox_size
 
   def __getitem__(self, index):
