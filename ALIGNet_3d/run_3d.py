@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 import config_3d
-from model import loss_3d, io_3d
+from model import loss_3d, io_3d, ops_3d
 from preprocess import datasets
   
 #run the model for a single epoch
@@ -43,21 +43,21 @@ def run_epoch_3d(model, optimizer,  src_loader, tar_loader, grid_size):
       tar_batch = torch.tensor(tar_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config_3d.DEVICE)
       src_batch = torch.tensor(src_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config_3d.DEVICE)
       input_image = torch.stack([src_batch, aug_batch])
+      #input should be of shape (N,C,D,)
       input_image  = input_image.permute([1,0,2,3,4])
       #run the network
-      diff_grid = model.forward(input_image)
-      def_grid = model.cumsum(diff_grid)
-      tar_est = model.warp(def_grid, src_batch)
+      diff_grid, def_grid, tar_est = model.forward(input_image, src_batch)
       tar_est = tar_est.squeeze(dim=1)
-      loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+      init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
+      loss = loss_3d.get_loss_3d(tar_batch, tar_est, diff_grid, init_grid, config_3d.LAMBDA, config_3d.GRID_SIZE,  config_3d.VOX_SIZE)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
       loss_list.append(loss)
   return loss_list
 
-def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, graph_loss=False):
-  optimizer = optim.Adam(model.parameters(), lr=1e-3)
+def run_model(model,  src_loader, tar_loader, grid_size, result_checker=None, graph_loss=False):
+  optimizer = optim.Adam(model.parameters(), lr=config_3d.STEP)
   epoch_loss = []
   for i in range(config_3d.EPOCHS):
     loss_list = run_epoch_3d(model, optimizer, src_loader, tar_loader, grid_size)
@@ -73,17 +73,16 @@ def run_model(model,src_loader, tar_loader, grid_size, result_checker=None, grap
 
 
 
-
 #train the data
 #data_index 0 = vase, 1= plane
 #iter is the number of iterations
-def train_3d(model, model_path, iter_t, tr, model_name, result_checker=None, graph_loss=False):
-  for i in range(iter_t):
-    tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, augment_times=config_3d.AUGMENT_TIMES_TR)
+def train_3d(model, model_path, tr, result_checker=None, graph_loss=False):
+  for i in range(config_3d.ITER):
+    tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_TR, config_3d.MASK_SIZE)
     tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
     tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
     tr_tar = tr_tar_dl
     tr_src = tr_src_dl
-    run_model(model, tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
-    io_3d.save_model(model, model_path, model_name+'.pt')
+    run_model(model,tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
+    io_3d.save_model(model, model_path, 'model.pt')
     

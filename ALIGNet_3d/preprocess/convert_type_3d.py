@@ -53,9 +53,9 @@ def scale_vert(coord_range, mesh):
   
 #given dataset of meshes, sample data into pointclouds
 #if mesh is False, we are using the pointcloud 
-def PointCloud(mesh, num_samples, device):
+def PointCloud(mesh, num_samples):
   samples = sample_points_from_meshes(mesh, num_samples=num_samples)
-  features=torch.zeros(len(samples), num_samples, 5).to(device)
+  features=torch.zeros(len(samples), num_samples, 5)
   pointcloud = structures.Pointclouds(samples, features=features)
   return pointcloud 
 
@@ -72,18 +72,25 @@ def Voxel(pointcloud, voxel_num):
 #load the mesh from a given location, save both the pointcloud and voxel representation of the model
 class Compound_Data():
   #load the mesh data
-  def __init__(self, mesh, device):
+  def __init__(self, mesh):
     self.mesh = mesh
     self.pointcloud = None
     self.voxel = None
-    self.device = device
+  #a replicate of the torch.to() functionality 
+  #apply torch.to() to all the Tensors in the compound class
+  def to(self, device):
+    self.mesh.to(device)
+    if self.pointcloud is not None:
+      self.pointcloud.to(device)
+    if self.voxel is not None:
+      self.voxel.to(device)
     
   def scale_mesh(self):
     min_range = get_min_range(self.mesh)
     scale_vert(min_range, self.mesh)
 
   def get_pointcloud(self, num_samples):
-    self.pointcloud = PointCloud(self.mesh, num_samples, self.device)
+    self.pointcloud = PointCloud(self.mesh, num_samples)
   def get_voxel(self, voxel_num):
     if not self.pointcloud == None:
       self.voxel = Voxel(self.pointcloud, voxel_num)
@@ -94,13 +101,35 @@ class Compound_Data():
   
 #basic class for creating dataset out of a given input
 class DS(Dataset):
-  def __init__(self, data):
+  def __init__(self, data, data_sec=None):
     self.data = data
+    self.is_sec = False
+    if data_sec:
+      self.is_sec = True
+      self.data_sec = data_sec
   def __getitem__(self, index):
-    x = self.data[index]
-    return x
+    if self.is_sec:
+      x = self.data[index]
+      y = self.data_sec[index]
+      return x,y
+    else:
+      x = self.data[index]
+      return x
   def __len__(self):
     return len(self.data)
+  def collate_fn(self, batch):
+    if self.is_sec:
+      x,y = zip(*batch)
+      x = list(x)
+      x = torch.stack(x, dim=0)
+      y = list(y)
+      return x,y
+    else:
+      x = batch
+      x = list(x)
+      x = torch.stack(x, dim=0)
+      return x
+     
 
 #input
 #A dataset to perform the operation of expanding the size of the dataset
@@ -173,12 +202,14 @@ class Expand(Dataset):
 #val_set: specifies whether it is a validation set => if so, different return values and augmentation routines
 #augment_time: number of times to augment the dataset => length of the return value will be augment_times * len(tar)
 #pointcloud: (only active for val_set=True) if pointcloud is given, also augment the pointcloud
+#augment times should always be more than or equal to 1 
 class Augment_3d(Dataset):
-  def __init__(self, tar, batch_size, vox_size, val_set=False, augment_times=0, pointcloud=None):
+  def __init__(self, tar, batch_size, vox_size, mask_size, val_set=False, augment_times=1, pointcloud=None):
     self.is_pt = False if pointcloud is None else True
     self.val_set = val_set
     self.batch_size = batch_size
     self.augment_times = augment_times
+    self.is_aug = False if augment_times == 0 else True
     #first augment the original tar_list to match the returning batch size, then perform augmentation
     tar_list = []
     for i in range(self.augment_times):
@@ -188,10 +219,13 @@ class Augment_3d(Dataset):
       pt_list = []
       for i in range(self.augment_times):
         pt_list.append(pointcloud)
-      self.pt_list = torch.utils.data.ConcatDataset(pt_list)
-    self.tar_list = torch.utils.data.ConcatDataset(tar_list)
-    self.aug_list = torch.utils.data.ConcatDataset(tar_list)
+      if self.is_aug:
+        self.pt_list = torch.utils.data.ConcatDataset(pt_list)
+    if self.is_aug:
+      self.tar_list = torch.utils.data.ConcatDataset(tar_list)
+      self.aug_list = torch.utils.data.ConcatDataset(tar_list)
     self.vox_size = vox_size
+    self.mask_size = mask_size
 
   def __getitem__(self, index):
     #return augmented list when val_set is set to true
@@ -221,10 +255,10 @@ class Augment_3d(Dataset):
   def mask(self, vox_batch, pt_batch=None):
     #if pt_batch exists, pass in the batch parameter as a tuple
     if not pt_batch == None: 
-      aug_vox, aug_pt = augment_3d.random_mask_3d((vox_batch, pt_batch), self.vox_size, (15, 30), square=True)
+      aug_vox, aug_pt = augment_3d.random_mask_3d((vox_batch, pt_batch), self.vox_size, self.mask_size, square=True)
       return aug_vox, aug_pt
     else:
-      aug_vox = augment_3d.random_mask_3d(vox_batch, self.vox_size, (15,30), square=True)
+      aug_vox = augment_3d.random_mask_3d(vox_batch, self.vox_size, self.mask_size, square=True)
       return aug_vox
 
   def collate_fn(self, batch):
@@ -233,7 +267,7 @@ class Augment_3d(Dataset):
       if self.is_pt:
         vox_batch, pt_batch = zip(*batch)
         vox_batch = torch.stack(list(vox_batch), dim=0)
-        if self.augment_times > 0:
+        if self.is_aug:
           pt_batch = list(pt_batch)
           pt_list = []
           #concatenate the batch into type Pointcloud
@@ -246,7 +280,7 @@ class Augment_3d(Dataset):
           return vox_batch, pt_batch
       else:
         vox_batch = torch.stack(list(batch), dim=0)
-        if self.augment_times > 0:
+        if self.is_aug:
           vox_batch = self.mask(vox_batch) 
           return vox_batch
     else:
@@ -254,8 +288,8 @@ class Augment_3d(Dataset):
       aug_batch = torch.stack(list(aug_batch), dim=0)
       tar_batch = torch.stack(list(tar_batch), dim=0)
       #the batch will be of shape batchx3xDxNxWxH)
-      if self.augment_times > 0:
-        aug_batch = self.mask(aug_batch) 
+      if self.is_aug:
+        aug_batch = self.mask(aug_batch)
       return aug_batch, tar_batch
 
 

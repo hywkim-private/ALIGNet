@@ -84,12 +84,12 @@ def random_mask_3d(data, size, mask_size, square=True, recursion_counter=0, get_
         reapply_counter += 1
     #if is_pt is True, apply the mask operation to pointcloud
     if is_pt:
-      start_coordinate_x = -1 + (start_coordinate_x*2 / size)
-      start_coordinate_y = -1 + (start_coordinate_y*2 / size)
-      start_coordinate_z = -1 + (start_coordinate_z*2 / size)
-      end_coordinate_x = -1 + (end_coordinate_x*2 / size)
-      end_coordinate_y = -1 + (end_coordinate_y*2 / size)
-      end_coordinate_z = -1 + (end_coordinate_z*2 / size)
+      start_coordinate_x = (start_coordinate_x-(size/2)) / (size/2)
+      start_coordinate_y = (start_coordinate_y-(size/2)) / (size/2)
+      start_coordinate_z = (start_coordinate_z-(size/2)) / (size/2)
+      end_coordinate_x = (end_coordinate_x-(size/2)) / (size/2)
+      end_coordinate_y = (end_coordinate_y-(size/2)) / (size/2)
+      end_coordinate_z = (end_coordinate_z-(size/2)) / (size/2)
       #identify the target pointcloud
       pt = pt_ts[i-1]
       #store the deleted idx from the verts_lists => use this list to delete faces
@@ -100,9 +100,9 @@ def random_mask_3d(data, size, mask_size, square=True, recursion_counter=0, get_
         #delete the vertice if any of the coordinates are within the delete range
         #Logic: we need to keep the "padded" datastructure of pointcloud intact
         #Thus we will remove the selected "in-box" points and attatch a zero tensor at the very end
-        if start_coordinate_x <= point[0] and point[0] <= end_coordinate_x: 
+        if start_coordinate_x <= point[2] and point[2] <= end_coordinate_x: 
           if start_coordinate_y <= point[1] and point[1] <= end_coordinate_y:
-            if start_coordinate_z <= point[2] and point[2] <= end_coordinate_z:
+            if start_coordinate_z <= point[0] and point[0] <= end_coordinate_z:
               disappeared = point.clone()
               temp_pt = torch.cat((pt_ts[i-1,:idx], pt_ts[i-1, idx+1:]))
               pt_ts[i-1] = torch.cat((temp_pt, zero_ts))

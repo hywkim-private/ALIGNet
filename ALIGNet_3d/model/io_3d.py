@@ -9,7 +9,7 @@ from . import network_3d, ops_3d
 import wget
 
 #a function that parses through the file and returns the filename of the highest index number
-def latest_filename(file_path):
+def latest_filename_png(file_path):
   file_list = []
   for file in glob.glob(file_path + '/*.png', recursive=True):
     str_list = str(file).split('/')
@@ -23,7 +23,22 @@ def latest_filename(file_path):
     max_num = 0
   filename = file_path  + str(max_num) + '.png'
   return filename
-    
+
+#a function that parses through the file and returns the filename of the highest index number
+def latest_filename_data(file_path):
+  file_list = []
+  for file in glob.glob(file_path + '/*', recursive=True):
+    str_list = str(file).split('/')
+    file = str_list[len(str_list)-1]
+    file = file[0]
+    file = int(file)
+    file_list.append(file)
+  if not len(file_list) == 0:
+    max_num = max(file_list) + 1
+  else:
+    max_num = 0
+  filename = file_path  + str(max_num) 
+  return filename
 
 #download and extract zip_file data
 def download_zip(url, extract_path):
@@ -63,9 +78,7 @@ def save_ds(ds, ds_name, ds_path):
   torch.save(ds, path)
   
 #load raw datasets from dir
-def load_ds(path, ds_index=0):
-  #TODO: add more datasets
-  ds_name = 'plane'
+def load_ds(path):
   #if ds_index == 1:
     #ds_name = 'plane'
   tr = torch.load(os.path.join(path, 'tr.pt'))

@@ -1,0 +1,61 @@
+---
+#this file works as a reference for initial confihurations
+#whenever a new model or dataset is initialized, its configuration file is created in accordance to this file
+
+#configurations for initializing new datasets
+#NO EFFECT IF NOT INITIALIZING A NEW DATASET
+data:
+ data_type: plane
+ target_proportion: 0.5
+ target_proportion_val: 0.5
+ train_datasize: 300
+ val_datasize: 30
+ data_path_plane: ./data/train/02691156/
+ augment:
+  pt_sample: 10000
+ url_data: http://shapenet.cs.stanford.edu/shapenet/obj-zip/SHREC16/train.zip
+  
+  
+#configurations for initializing new model 
+#NO EFFECT IF NOT INITIALIZING A NEW MODEL 
+model:
+ model_path: ./obj/model_plane56/
+ model_idx: 2
+ grid_size: 9
+ vox_size: 32
+ maxfeat: 64
+ #the weight value to apply to the L_TV_Loss
+ lambda: 2.0e-3
+ #setting this parameter will parameterize offset values, enabling the model to learn them 
+ learn_offset: true
+ data_path: ./data/datasets/plane/3/
+ 
+#configurations for training
+#has effect in all modes 
+train:
+ model_path: ./obj/model_plane56/
+ step: 1.0e-3
+ batch_size: 50
+ epochs: 50
+ iter: 50
+ mask_size:
+  - 15
+  - 25
+ augment_times_tr: 5
+ augment_times_val: 1
+ result_check: true
+ graph_loss: true
+ 
+#configurations for valid operation
+#only has effect in valid mode
+valid:
+ model_path: ./obj/model_plane56/
+ augment_times_val: 1
+ batch_size: 20
+ mask_size:
+  - 10
+  - 15
+ visualize:
+  num_sample: 10
+  graph_loss: true
+  visualize_type: custom

@@ -11,7 +11,9 @@ from pytorch3d.structures import Meshes, Pointclouds
 from preprocess import convert_type_3d as conv
 import config_3d
 from model import loss_3d, ops_3d
-from utils.vis_3d import visualize_results_3d
+from utils.vis_3d import visualize_results_3d, visualize_pointclouds, visualize_mesh
+
+
 
 #TODO: THE MESH REPRESENTATION OF THE INPUT DATA IS NOT STORED IN DATALOADERS IN THE FIRST PLACE
 #MUST MODIFY THE DATALOADERS IN ORDER TO RETURN A PACKED (MESH, VOXEL) TUPLE IF SPECIFIED BY AN ARGUMENT (DONE)
@@ -46,6 +48,29 @@ from utils.vis_3d import visualize_results_3d
 #DIVERSIFY THE MODEL
 
 
+#TODO: THE DATA VISUALIZATION YIELDS OVERLAPPING IMAGES THOUGH IT SHOULDN'T => FIX 
+
+
+#https://stackoverflow.com/questions/59327021/how-to-plot-a-2d-structured-mesh-in-matplotlib
+
+
+
+#TWO POSSIBLE POINTS OF ERROR: 1. INTEPOLATE_3D 2. CONVERTING VOXEL => MESH DEF_GRID
+
+
+#ONLY THING LEFT TO CHECK: IF THE TWO DEF_GRIDS ARE EQUAL (RIGHT AFTER RETURNS AND BEFORE INTERPOLATING)
+#IF NOT, PRBLM WITH THE INTERPOLATE
+
+#TODO: THE MAIN PROBLEM WAS WITH THE OFFSET VALUE
+#NOW THE PROBLEM LIES IN X_DEFORMATION GRID (VERTICAL SHIFT), NEAR THE CENTER, HAS SOME WEIRD PROTRUDED VALUES
+#MY TENTATIVE GUESS IS THAT IT HAS TO DO WITH VOXELS BEING HOLLOW SO CHECK THAT AND IF THATS NOT THE CASE
+#CHECK IF THE DIFF GRID LOSS IS WORKING PROPERLY 
+
+
+#HOW I SOLVED THE PRORUSION PROBLEM
+#USED A MIN LOSS FUNCTION FOR THE L_TV LOSS, INSTEAD OF SUMMING OVER EVERY ELEMENT=>STOPS EXTREME VALUES MORE EFFECTIVELY
+#TODO: FIND THE INHERENT CAUSE FOR THE WARP GRID "FIRING UP" AROUND THE CENTER OF Z DIRECTIONAL WARP
+
 #__init__ input
 #model: ALIGNet_3d model
 #valid_tar: target dataset
@@ -73,9 +98,9 @@ class result_checker_3d():
   #train_loss: whether or not to get the train set loss
   #get_src_mesh: get the mesh representation for src dataset
   #get_tar_pt: get the  pointcloud representation for the target dataset
-  def update(self, train_loss=None, get_src_mesh=False, get_tar_pt=False):
+  def update(self, train_loss=None, get_src_mesh=False, get_tar_pt=False, get_for_grid=False):
     #run the validation
-    self.validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE, get_src_mesh, get_tar_pt)
+    self.validate_dl_3d(self.model, self.valid_src, self.valid_tar, config_3d.GRID_SIZE, get_src_mesh, get_tar_pt, get_for_grid=get_for_grid)
     #set the get_mesh pararmeter to True in order to use the warp_mesh functionality 
     #the visualize() function will still work without update(get_mesh=True). But will only get the mesh/pointcloud data as sampled from their voxel counterparts
     self.src_mesh_ori = None
@@ -122,7 +147,8 @@ class result_checker_3d():
     #then append them altogether in the Mesh datatype
     else: 
       def_mesh_list = []
-      for mesh, def_grid in zip(self.src_mesh_ori, self.def_grid_list):
+      for mesh, for_grid in zip(self.src_mesh_ori, self.for_grid_list):
+        #def grid of shape (N,C,D,H,W)
         vertice_list = []
         face_list = []
         #for each batch of inputs
@@ -133,12 +159,11 @@ class result_checker_3d():
           m_faces = m.faces_list()[0]
           m_faces = np.stack(m_faces, axis=0)
           m_verts = np.stack(m_verts, axis=0)
-          g = def_grid[i]
-          g = g.detach().numpy()
-          #interpolate the single mesh
-          
-          
+          #m_verts = np.flip(m_verts, 1)
+          g = for_grid[i]
+          #interpolate the single mesh with the forward warp
           deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g, config_3d.VOX_SIZE)
+          
           #make faces and verts into Tensors so it can make up for the Mesh datatype
           m_faces = torch.Tensor(m_faces)
           deformed_verts = torch.Tensor(deformed_verts)
@@ -186,10 +211,10 @@ class result_checker_3d():
   #datatype : 0-voxel, 1-src(mesh)-tar(pointclud)-tar_est(mesh)
   def visualize(self, datatype=0, batch_index=0, sample=None, save_path=None):
     if datatype == 0:
-      visualize_results_3d(self.src_list, self.tar_list, self.est_list, datatype, batch_index, sample, save_path)
+      visualize_results_3d(self.src_list, self.tar_list, self.est_list, self.def_grid_list, datatype, batch_index, sample, save_path)
     elif datatype == 1: 
       #FOR NOW WE WILL MANUALLY SET DATATYPE=> TODO:SYNCHRONIZE THE NAMING OF DATATYPES
-      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, 3, batch_index, sample, save_path)
+      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, self.for_grid_list, 3, batch_index, sample, save_path)
 
 
   #update the loss value after running the model
@@ -211,22 +236,36 @@ class result_checker_3d():
   #given source and target validation  dataloaders, perform all validation operations
   #save_img is the path to save the img
   @torch.no_grad()
-  def validate_3d(self, model, source_image, target_image, grid_size):
+  def validate_3d(self, model, source_image, target_image, grid_size, get_for_grid=False):
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3,4])
-    diff_grid = model.forward(input_image)
+    diff_grid, def_grid, tar_est= model.forward(input_image, source_image)
     #we will use def grid to apply warp directly to mesh
-    def_grid = model.cumsum(diff_grid)
-    tar_est = model.warp(def_grid, source_image)
     tar_est = tar_est.squeeze(dim=1)
+    #convert the backward ward into forward ward
+    g = def_grid.clone() 
+    g = g.to(config_3d.CPU)
+    g = g.detach().numpy()
+    
     #calculate the loss for the image
-    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+    init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
+    loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, init_grid, config_3d.LAMBDA, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
+    for_grid_list = []
+    if get_for_grid:
+      i=0
+      for g_ in g:
+        x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g_[0],g_[1],g_[2])
+        for_grid = np.stack([x_fr, y_fr, z_fr])
+        g[i] = for_grid
+        i+=1
+        for_grid_list.append(for_grid)
+      for_grid_batch = np.stack(for_grid_list)
+      return tar_est, diff_grid, def_grid, for_grid_batch, loss
     return tar_est, diff_grid, def_grid, loss
-  
   #run loop for the dataloaders to run the validate() operation
   #if get_mesh param is set to true, also return the mesh representation of src dataset (returns 7 results instead of 6 )
   @torch.no_grad()
-  def validate_dl_3d(self, model, source_dl, target_dl, grid_size, get_src_mesh=False, get_tar_pt=False):
+  def validate_dl_3d(self, model, source_dl, target_dl, grid_size, get_src_mesh=False, get_tar_pt=False, get_for_grid=False):
     target_iter = iter(target_dl)
     source_iter = iter(source_dl)
     #we will also create lists for tar and src since dataloaders may shuffle them in random orders
@@ -235,6 +274,7 @@ class result_checker_3d():
     est_list = []
     diff_grid_list = []
     def_grid_list = []
+    for_grid_list = []
     loss_list = []
     #if visualize is True, initialize the list for src mesh
     if get_src_mesh:
@@ -265,12 +305,18 @@ class result_checker_3d():
         
       target = torch.FloatTensor(target).squeeze(dim=1).to(config_3d.DEVICE)
       source = torch.FloatTensor(source).squeeze(dim=1).to(config_3d.DEVICE)
-      tar_est, diff_grid, def_grid, loss = self.validate_3d(model, source, target, grid_size)
+      if get_for_grid:
+        tar_est, diff_grid, def_grid, for_grid, loss = self.validate_3d(model, source, target, grid_size,get_for_grid=get_for_grid)
+        for_grid_list.append(for_grid)
+      else: 
+        tar_est, diff_grid, def_grid, loss = self.validate_3d(model, source, target, grid_size)
       target_list.append(target)
       source_list.append(source)
       est_list.append(tar_est)
       diff_grid_list.append(diff_grid)
       def_grid_list.append(def_grid)
+      if get_for_grid:
+        for_grid_list.append(for_grid)
       loss_list.append(loss)
     avg_loss_ = loss_3d.avg_loss_3d(loss_list)
     #update th class parameterss
@@ -280,12 +326,16 @@ class result_checker_3d():
     self.est_list = est_list
     self.diff_grid_list = diff_grid_list
     self.def_grid_list = def_grid_list
+    self.for_grid_list = for_grid_list
     self.val_loss.append(avg_loss_)
     #also update src_mesh and tar_pt if specified
     if get_src_mesh:
       self.src_mesh_list = source_mesh_list
     if get_tar_pt:
       self.tar_pt_list = target_pt_list
+    if get_for_grid: 
+      self.for_grid_list = for_grid_list
+
 
   
 
