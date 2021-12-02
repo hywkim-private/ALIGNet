@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from imgaug import augmenters as iaa
 from . import ops_3d
 
-from .conv import model3 as model
 
 
 #perform cumsum operation, then upsample the grid to vox_size

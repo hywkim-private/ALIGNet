@@ -100,9 +100,9 @@ def random_mask_3d(data, size, mask_size, square=True, recursion_counter=0, get_
         #delete the vertice if any of the coordinates are within the delete range
         #Logic: we need to keep the "padded" datastructure of pointcloud intact
         #Thus we will remove the selected "in-box" points and attatch a zero tensor at the very end
-        if start_coordinate_x <= point[0] and point[0] <= end_coordinate_x: 
+        if start_coordinate_x <= point[2] and point[2] <= end_coordinate_x: 
           if start_coordinate_y <= point[1] and point[1] <= end_coordinate_y:
-            if start_coordinate_z <= point[2] and point[2] <= end_coordinate_z:
+            if start_coordinate_z <= point[0] and point[0] <= end_coordinate_z:
               disappeared = point.clone()
               temp_pt = torch.cat((pt_ts[i-1,:idx], pt_ts[i-1, idx+1:]))
               pt_ts[i-1] = torch.cat((temp_pt, zero_ts))

@@ -37,8 +37,6 @@ def initialize_config():
     global PT_SAMPLE
 
     
-    #parameters for model config
-    global MODEL_NAME
     #signifies which model to use 
     global MODEL_IDX
     #parameters for the warp-field/grid

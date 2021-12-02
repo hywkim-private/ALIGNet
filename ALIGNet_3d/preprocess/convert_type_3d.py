@@ -101,13 +101,35 @@ class Compound_Data():
   
 #basic class for creating dataset out of a given input
 class DS(Dataset):
-  def __init__(self, data):
+  def __init__(self, data, data_sec=None):
     self.data = data
+    self.is_sec = False
+    if data_sec:
+      self.is_sec = True
+      self.data_sec = data_sec
   def __getitem__(self, index):
-    x = self.data[index]
-    return x
+    if self.is_sec:
+      x = self.data[index]
+      y = self.data_sec[index]
+      return x,y
+    else:
+      x = self.data[index]
+      return x
   def __len__(self):
     return len(self.data)
+  def collate_fn(self, batch):
+    if self.is_sec:
+      x,y = zip(*batch)
+      x = list(x)
+      x = torch.stack(x, dim=0)
+      y = list(y)
+      return x,y
+    else:
+      x = batch
+      x = list(x)
+      x = torch.stack(x, dim=0)
+      return x
+     
 
 #input
 #A dataset to perform the operation of expanding the size of the dataset
@@ -180,8 +202,9 @@ class Expand(Dataset):
 #val_set: specifies whether it is a validation set => if so, different return values and augmentation routines
 #augment_time: number of times to augment the dataset => length of the return value will be augment_times * len(tar)
 #pointcloud: (only active for val_set=True) if pointcloud is given, also augment the pointcloud
+#augment times should always be more than or equal to 1 
 class Augment_3d(Dataset):
-  def __init__(self, tar, batch_size, vox_size, val_set=False, augment_times=0, pointcloud=None):
+  def __init__(self, tar, batch_size, vox_size, mask_size, val_set=False, augment_times=1, pointcloud=None):
     self.is_pt = False if pointcloud is None else True
     self.val_set = val_set
     self.batch_size = batch_size
@@ -201,8 +224,8 @@ class Augment_3d(Dataset):
     if self.is_aug:
       self.tar_list = torch.utils.data.ConcatDataset(tar_list)
       self.aug_list = torch.utils.data.ConcatDataset(tar_list)
-    
     self.vox_size = vox_size
+    self.mask_size = mask_size
 
   def __getitem__(self, index):
     #return augmented list when val_set is set to true
@@ -232,10 +255,10 @@ class Augment_3d(Dataset):
   def mask(self, vox_batch, pt_batch=None):
     #if pt_batch exists, pass in the batch parameter as a tuple
     if not pt_batch == None: 
-      aug_vox, aug_pt = augment_3d.random_mask_3d((vox_batch, pt_batch), self.vox_size, (15, 30), square=True)
+      aug_vox, aug_pt = augment_3d.random_mask_3d((vox_batch, pt_batch), self.vox_size, self.mask_size, square=True)
       return aug_vox, aug_pt
     else:
-      aug_vox = augment_3d.random_mask_3d(vox_batch, self.vox_size, (15,30), square=True)
+      aug_vox = augment_3d.random_mask_3d(vox_batch, self.vox_size, self.mask_size, square=True)
       return aug_vox
 
   def collate_fn(self, batch):

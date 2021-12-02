@@ -16,6 +16,9 @@ import config_parse
 #TODO: MAKE THE RENDER VALID CONFIG FUNCTION AND TEST
 #MAKE SURE WE ARE NOT USING COMMAND LINE ARGUMENTS ANYMMORE BUT ENTIRELY DEPENDENT ON CONFIG FILES
 
+
+#TODO: CREATE COLLATE_FN FOR DS IN CONVERT_TYPE.PY
+
 #given a string of datatype, return its appropriate index
 def get_data_idx(datatype_str):
   dtype = 0
@@ -44,7 +47,7 @@ def train_model(tr, val, model_path):
   if config_3d.RESULT_CHECK:
     #make the valid dataset
     val_tar, val_src = preprocess.datasets.get_val_dl_3d(
-      val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
+      val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
     if os.path.exists(result_check_path): 
       obj = preprocess.io_3d.load_obj(result_check_path)
     else:
@@ -226,7 +229,7 @@ if __name__ == '__main__':
       print("This function is deprecated and is no longer supported => aborting..")
       exit()
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
       result_checker.get_pointcloud_from_mesh(config_3d.PT_SAMPLE)
@@ -239,7 +242,7 @@ if __name__ == '__main__':
       exit()
       #for mesh visualization, we need to set get_mesh=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_src_mesh=True, get_tar_pt=False)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE,get_src_mesh=True, get_tar_pt=False)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_mesh=True)
@@ -251,7 +254,7 @@ if __name__ == '__main__':
     elif config_3d.VISUALIZE_TYPE == 'custom':
       #for mesh visualization, we need to set get_mesh=True, get_for_grid=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, get_src_mesh=True, get_tar_pt=True)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, get_src_mesh=True, get_tar_pt=True)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_src_mesh=True, get_tar_pt = True, get_for_grid=True)
@@ -260,7 +263,7 @@ if __name__ == '__main__':
     #default: voxel visualization
     else:
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
       result_checker.visualize(datatype=0, sample=config_3d.NUM_SAMPLE, save_path=image_path)

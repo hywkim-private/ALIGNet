@@ -78,7 +78,7 @@ def run_model(model,  src_loader, tar_loader, grid_size, result_checker=None, gr
 #iter is the number of iterations
 def train_3d(model, model_path, tr, result_checker=None, graph_loss=False):
   for i in range(config_3d.ITER):
-    tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, augment_times=config_3d.AUGMENT_TIMES_TR)
+    tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_TR, config_3d.MASK_SIZE)
     tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
     tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
     tr_tar = tr_tar_dl
