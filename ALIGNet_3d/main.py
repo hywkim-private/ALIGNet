@@ -43,14 +43,15 @@ def train_model(tr, val, model_path):
   iter_t = config_3d.ITER
   #make an overfit check if specified by config 
   result_check = None 
-  result_check_path = config_3d.MODEL_PATH + '/result_checker/'
+  result_check_path = config_3d.MODEL_PATH + 'result_checker/'
   if config_3d.RESULT_CHECK:
     #make the valid dataset
     val_tar, val_src = preprocess.datasets.get_val_dl_3d(
       val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
     if os.path.exists(result_check_path): 
-      obj = preprocess.io_3d.load_obj(result_check_path)
+      obj = io_3d.load_obj(result_check_path + 'result_checker.obj')
     else:
+      os.makedirs(result_check_path)
       result_check = validate_3d.result_checker_3d(model, val_tar, val_src)
   run_3d.train_3d(model, model_path, tr, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
   #model is already saved in the run operation
@@ -101,33 +102,24 @@ if __name__ == '__main__':
     config = config_parse.load_config('./init_config.yaml')
     config_parse.render_data_config(config)
     #check the type of data (for now, we will only support plane--add more)
-    if config_3d.DATA_TYPE == 'plane':
-      #the path where raw plane data is stored
-      load_path = config_3d.DATA_PATH_PLANE
     #first, check for existing directory and if not, create a new directory to store data 
     #we assume a all-inclusive imagenet dataset, so only need to download once 
-    #TODO: add other datatypes as if statement
-    save_path = config_3d.DATA_PATH + 'datasets/' + config_3d.DATA_TYPE + '/'
     url = config_3d.URL_DATA
       
     #download data
-    if not os.path.exists(save_path):
-      os.makedirs(save_path)
-    #the path for the idx directory
-    save_path = io_3d.latest_filename_data(save_path) + "/"
-    #make a new data idx directory
-    os.makedirs(save_path)
+    if not os.path.exists(config_3d.DATA_PATH):
+      os.makedirs(config_3d.DATA_PATH)
     #write configuration file
-    write_data_config(config, save_path)
+    config_parse.write_data_config(config, config_3d.DATA_PATH)
     #download only if the download flag is set
     if args.download:
       model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
     dtype = get_data_idx(config_3d.DATA_TYPE)
-    tr, val = get_ds(load_path, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
+    tr, val = get_ds(config_3d.LOAD_PATH, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
     
     #save datasets to the same directory as the model
-    model.io_3d.save_ds(tr, 'tr', save_path)
-    model.io_3d.save_ds(val, 'val', save_path)
+    model.io_3d.save_ds(tr, 'tr', config_3d.DATA_PATH)
+    model.io_3d.save_ds(val, 'val', config_3d.DATA_PATH)
     
 
   #if new model, download and create dataset, make new model
@@ -171,7 +163,6 @@ if __name__ == '__main__':
     
       
   if args.command == 'train':
-    
     #load the target model configuartions 
     #--------------------------handle config----------------------
     #render the model configurations
@@ -193,13 +184,11 @@ if __name__ == '__main__':
     model = torch.load(config_3d.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config_3d.DEVICE)
     model = model.to(config_3d.DEVICE)
     tr, val = io_3d.load_ds(config_3d.DATA_PATH)
-
     tr.to(config_3d.DEVICE)
     val.to(config_3d.DEVICE)
     train_model(tr, val, config_3d.MODEL_PATH)
     
   if args.command == 'valid':
-    
     #--------------------------handle config----------------------
     #render valid configurations from init_config 
     config_parse.render_valid_config(config)

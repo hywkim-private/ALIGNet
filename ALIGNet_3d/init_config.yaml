@@ -2,60 +2,100 @@
 #this file works as a reference for initial confihurations
 #whenever a new model or dataset is initialized, its configuration file is created in accordance to this file
 
+
+
 #configurations for initializing new datasets
 #NO EFFECT IF NOT INITIALIZING A NEW DATASET
 data:
- data_type: plane
+ #name of the data type
+ data_type: nan
+ #proportion of target data to split from train dataset
  target_proportion: 0.5
+ #proportion of target data to split from validation dataset
  target_proportion_val: 0.5
- train_datasize: 300
+ #the size of the voxel, sampled from pointcloud data
+ vox_size: 32
+ #number of train data to get from the downloaded raw data 
+ train_datasize: 200
+ #number of validation data to get from the downloaded raw data
  val_datasize: 30
- data_path_plane: ./data/train/02691156/
+ #the path from which to load raw data
+ load_data_path: ./data/train/02747177/
+ #the path to which data will be saved 
+ data_path: ./data/datasets/nan/0/
  augment:
+  #number of points to sample from mesh data
   pt_sample: 10000
+ #url from which to download raw data
+ #ONLY APPLIED WHEN USING DATA -D 
  url_data: http://shapenet.cs.stanford.edu/shapenet/obj-zip/SHREC16/train.zip
   
   
 #configurations for initializing new model 
 #NO EFFECT IF NOT INITIALIZING A NEW MODEL 
 model:
- model_path: ./obj/model_plane56/
+ #the path where model is saved
+ model_path: ./obj/model_57/
+ #index of the model to use: a variety of models are defined in model/conv
  model_idx: 2
+ #the size of the grid output by the network (before upsampling is applied)
  grid_size: 9
+ #the size of the voxel, sampled from pointcloud data
  vox_size: 32
+ #maximum number of features to learn in the network => defines complexity of the model
  maxfeat: 64
  #the weight value to apply to the L_TV_Loss
  lambda: 2.0e-3
  #setting this parameter will parameterize offset values, enabling the model to learn them 
- learn_offset: true
- data_path: ./data/datasets/plane/3/
+ learn_offset: false
+ #path of the data to use
+ #(define relative to the uppermost directory)
+ data_path: ./data/datasets/nan/0/
  
 #configurations for training
 #has effect in all modes 
 train:
- model_path: ./obj/model_plane56/
+ #path of the model to train
+ model_path: ./obj/model_plane55/
+ #weight applied to gradient in each training step 
  step: 1.0e-3
+ #size of a single batch
  batch_size: 50
- epochs: 50
+ #number of epochs to run in a single iteration
+ epochs: 202
+ #number of iterations to run 
  iter: 50
+ #range of mask size to apply in augmenting target
+ #must be smaller than vox_size
  mask_size:
+  - 10
   - 15
-  - 25
- augment_times_tr: 5
+ #how many times to augment the train target dataset 
+ augment_times_tr: 3
+ #how many times to augment the validation target dataset
  augment_times_val: 1
+ #whether we are running checks for validation steps 
  result_check: true
+ #whether we are graphing the loss (saved in result-checker object)
  graph_loss: true
  
 #configurations for valid operation
 #only has effect in valid mode
 valid:
- model_path: ./obj/model_plane56/
+ #path of the path to use foir validation 
+ model_path: ./obj/model_plane55/
+ #how many times to augment the validation dataset 
  augment_times_val: 1
+ #size of a single batch
  batch_size: 20
+ #the range of mask size to apply to target datasets
  mask_size:
   - 10
   - 15
  visualize:
+  #number of  samples to visualize from a batch
   num_sample: 10
-  graph_loss: true
+  #the type of visualizations
+  #custom: visualize as presented in the paper
+  #voxel: visualize the voxel representation of valid results
   visualize_type: custom

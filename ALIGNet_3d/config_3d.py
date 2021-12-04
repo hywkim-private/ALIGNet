@@ -30,12 +30,11 @@ def initialize_config():
     global TRAIN_SIZE
     global VAL_SIZE
     #Path to which we will save the training data--MUST BE SPECIFIED BY THE USER 
-    global DATA_PATH
-    global DATA_PATH_PLANE
+    global LOAD_DATA_PATH
     #Specify the download url
     global URL_DATA
     global PT_SAMPLE
-
+    global DATA_TYPE
     
     #signifies which model to use 
     global MODEL_IDX
@@ -47,6 +46,8 @@ def initialize_config():
     global LAMBDA
     global LEARN_OFFSET
     global DATA_TYPE
+    global DATA_PATH
+
     
    
     

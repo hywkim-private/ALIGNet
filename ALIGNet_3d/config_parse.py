@@ -26,7 +26,6 @@ def load_model_config(config):
     cfg.VOX_SIZE = config['vox_size']
     cfg.MAXFEAT = config['maxfeat']
     cfg.MODEL_IDX = config['model_idx']
-    cfg.MODEL_NAME = config['model_name']
     cfg.LEARN_OFFSET = config['learn_offset']
     cfg.DATA_IDX = config['data_idx']
     cfg.LAMBDA = config['lambda']
@@ -60,10 +59,12 @@ def render_data_config(config):
     cfg.TARGET_PROPORTION_VAL = config['data']['target_proportion_val']
     cfg.TRAIN_SIZE = config['data']['train_datasize']
     cfg.VAL_SIZE = config['data']['val_datasize']
-    cfg.DATA_PATH_PLANE = config['data']['data_path_plane']
+    cfg.LOAD_DATA_PATH = config['data']['load_data_path']
+    cfg.DATA_PATH = config['data']['data_path']
     cfg.PT_SAMPLE = config['data']['augment']['pt_sample']
     cfg.URL_DATA = config['data']['url_data']
-    
+    cfg.DATA_TYPE = config['data']['data_type']
+    cfg.VOX_SIZE = config['data']['vox_size']
     
 def write_data_config(config, data_path):
     try: 
@@ -78,6 +79,5 @@ def render_valid_config(config):
     cfg.AUGMENT_TIMES_VAL = config['valid']['augment_times_val']
     cfg.NUM_SAMPLE = config['valid']['visualize']['num_sample']
     cfg.VISUALIZE_TYPE = config['valid']['visualize']['visualize_type']
-    cfg.GRAPH_LOSS = config['valid']['visualize']['graph_loss']
     cfg.BATCH_SIZE = config['valid']['batch_size']
     cfg.MASK_SIZE = tuple(config['valid']['mask_size'])
