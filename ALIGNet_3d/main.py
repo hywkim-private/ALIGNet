@@ -43,14 +43,15 @@ def train_model(tr, val, model_path):
   iter_t = config_3d.ITER
   #make an overfit check if specified by config 
   result_check = None 
-  result_check_path = config_3d.MODEL_PATH + '/result_checker/'
+  result_check_path = config_3d.MODEL_PATH + 'result_checker/'
   if config_3d.RESULT_CHECK:
     #make the valid dataset
     val_tar, val_src = preprocess.datasets.get_val_dl_3d(
       val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
     if os.path.exists(result_check_path): 
-      obj = preprocess.io_3d.load_obj(result_check_path)
+      obj = io_3d.load_obj(result_check_path + 'result_checker.obj')
     else:
+      os.makedirs(result_check_path)
       result_check = validate_3d.result_checker_3d(model, val_tar, val_src)
   run_3d.train_3d(model, model_path, tr, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
   #model is already saved in the run operation
@@ -114,11 +115,11 @@ if __name__ == '__main__':
     if args.download:
       model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
     dtype = get_data_idx(config_3d.DATA_TYPE)
-    tr, val = get_ds(config_3d.LOAD_DATA_PATH, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
+    tr, val = get_ds(config_3d.LOAD_PATH, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
     
     #save datasets to the same directory as the model
     model.io_3d.save_ds(tr, 'tr', config_3d.DATA_PATH)
-    model.io_3d.save_ds(val, 'val',config_3d.DATA_PATH)
+    model.io_3d.save_ds(val, 'val', config_3d.DATA_PATH)
     
 
   #if new model, download and create dataset, make new model

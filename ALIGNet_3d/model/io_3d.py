@@ -88,7 +88,7 @@ def load_ds(path):
 
 #a function to save objects--namely the result_checker
 def save_obj(obj, save_path):
-  file_pi = open(save_path + '.obj', 'wb') 
+  file_pi = open(save_path + 'result_checker.obj', 'wb') 
   pickle.dump(obj, file_pi)
 
 #a function to load objects

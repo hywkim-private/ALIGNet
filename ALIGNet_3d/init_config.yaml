@@ -62,7 +62,7 @@ train:
  #size of a single batch
  batch_size: 50
  #number of epochs to run in a single iteration
- epochs: 50
+ epochs: 202
  #number of iterations to run 
  iter: 50
  #range of mask size to apply in augmenting target
