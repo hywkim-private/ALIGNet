@@ -1,5 +1,5 @@
-# ALIGNet
-A pytorch implementation of ALIGNet, developed by Prof. Rana Hanocka.
+# ALIGNet_3d
+A pytorch implementation of ALIGNet's 3d version, developed by Prof. Rana Hanocka.
 
 1. Install dependencies
 Using virtual environments (pipenv)
