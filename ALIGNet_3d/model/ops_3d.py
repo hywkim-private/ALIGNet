@@ -71,18 +71,12 @@ def interpolate_3d_mesh(meshes, grids, vox_size):
   points = (x_points, y_points, z_points)
   
   #define the interpolation function along x, y, and z axis
-  #problem:---------this fucker-----------------
   x_interp = RegularGridInterpolator(points, grids[0])
-  #------------------------------------------------------
   y_interp = RegularGridInterpolator(points, grids[1])
   z_interp = RegularGridInterpolator(points, grids[2])
   z_verts = z_interp(meshes)
   y_verts = y_interp(meshes)
   x_verts = x_interp(meshes)
-  #print(meshes[np.where(x_verts==max(x_verts))])
-  #print(np.max(x_verts))
-  #print(grids[0,:,14,17])
-  #exit()
   deformed_batch = []
   mesh_list = []
   for i in range(len(x_verts)):
@@ -172,9 +166,9 @@ def convert_to_forward_warp(X,Y,Z):
   z_fr = np.zeros([len(X), len(X), len(X)])
   for i in range(len(X)):
     for j in range(len(Y)):
-      x_fr[:,i,j] = griddata(X[:,i,j], x_reg[:,i,j],x_reg[:,i,j],fill_value="extrapolate")
+      x_fr[:,i,j] = griddata(Z[i,j,:], x_reg[:,i,j],x_reg[:,i,j],fill_value="extrapolate")
       y_fr[i,:,j] = griddata(Y[i,:,j], y_reg[i,:,j],y_reg[i,:,j],fill_value="extrapolate")
-      z_fr[i,j,:] = griddata(Z[i,j,:], z_reg[i,j,:],z_reg[i,j,:],fill_value="extrapolate")
+      z_fr[i,j,:] = griddata(X[:,i,j], z_reg[i,j,:],z_reg[i,j,:],fill_value="extrapolate")
   #todo: interpolation method
   #return the forward warp grids
   return x_fr, y_fr, z_fr
