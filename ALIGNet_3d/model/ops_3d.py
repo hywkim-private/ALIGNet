@@ -166,9 +166,9 @@ def convert_to_forward_warp(X,Y,Z):
   z_fr = np.zeros([len(X), len(X), len(X)])
   for i in range(len(X)):
     for j in range(len(Y)):
-      x_fr[:,i,j] = griddata(Z[i,j,:], x_reg[:,i,j],x_reg[:,i,j],fill_value="extrapolate")
+      x_fr[:,i,j] = griddata(X[:,i,j], x_reg[:,i,j],x_reg[:,i,j],fill_value="extrapolate")
       y_fr[i,:,j] = griddata(Y[i,:,j], y_reg[i,:,j],y_reg[i,:,j],fill_value="extrapolate")
-      z_fr[i,j,:] = griddata(X[:,i,j], z_reg[i,j,:],z_reg[i,j,:],fill_value="extrapolate")
+      z_fr[i,j,:] = griddata(Z[i,j,:], z_reg[i,j,:],z_reg[i,j,:],fill_value="extrapolate")
   #todo: interpolation method
   #return the forward warp grids
   return x_fr, y_fr, z_fr

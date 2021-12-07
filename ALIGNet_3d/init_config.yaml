@@ -35,7 +35,7 @@ data:
 #NO EFFECT IF NOT INITIALIZING A NEW MODEL 
 model:
  #the path where model is saved
- model_path: ./obj/model_64/
+ model_path: ./obj/model_66/
  #index of the model to use: a variety of models are defined in model/conv
  model_idx: 2
  #the size of the grid output by the network (before upsampling is applied)
@@ -56,9 +56,9 @@ model:
 #has effect in all modes 
 train:
  #path of the model to train
- model_path: ./obj/model_64/
+ model_path: ./obj/model_65/
  #weight applied to gradient in each training step 
- step: 1.0e-4
+ step: 1.0e-5
  #size of a single batch
  batch_size: 20
  #number of epochs to run in a single iteration
@@ -83,7 +83,7 @@ train:
 #only has effect in valid mode
 valid:
  #path of the path to use foir validation 
- model_path: ./obj/model_64/
+ model_path: ./obj/model_65/
  #how many times to augment the validation dataset 
  augment_times_val: 1
  #size of a single batch
@@ -98,5 +98,5 @@ valid:
   #the type of visualizations
   #custom: visualize as presented in the paper
   #voxel: visualize the voxel representation of valid results
-  visualize_type: custom
+  visualize_type: voxel
   
