@@ -2,8 +2,9 @@
 import torch
 import numpy as np
 import math
-from scipy.interpolate import interpn, griddata,RegularGridInterpolator
+from scipy.interpolate import interpn, griddata,RegularGridInterpolator,LinearNDInterpolator
 from scipy.ndimage import affine_transform
+
 
 from torch.nn.functional import grid_sample
 #initialize the differential grid
@@ -81,6 +82,53 @@ def interpolate_3d_mesh(meshes, grids, vox_size):
   mesh_list = []
   for i in range(len(x_verts)):
     vert = np.array([x_verts[i], y_verts[i], z_verts[i]])
+    mesh_list.append(vert)
+  deformed_verts = np.stack(mesh_list, axis=0)
+  return deformed_verts
+  
+#input:
+#mesh: mesh vertice of shape np.arrray(n_points, 3)
+#grid: deformation grid of shape (3, n, n, n)
+#output: deformed mesh of shape (n_points, 3)
+#EXPLANATION: the function interpolate_3d_mesh, given grid index points and data value corressponding to these points,
+#returns the expected data values for input coordinate points in the shape, [x, y, z].
+#We, however, need to get the "deformed" coordinate points for each coordinate input [x,y,z]. Since our input "data values"
+#represent the end coordinates of the deformed meshes along each axis (in shape [3,n,n,n]), we need 3 interpolate_3d_mesh 
+#functions that each retrieves the "deformed" coordinates for x, y, and z  axis. 
+#For example, the "deformed" coordinates for [0.4, 0.5, 0.1], we will be [x_interp([0.4, 0.5, 0.1], y_interp[0.4, 0.5, 0.1], x_interp[0.4, 0.5, 0.1])].
+#input:
+#mesh: mesh vertice of shape np.arrray(n_points, 3)
+#grid: deformation grid of shape (3, n, n, n)
+#output: deformed mesh of shape (n_points, 3)
+#EXPLANATION: the function interpolate_3d_mesh, given grid index points and data value corressponding to these points,
+#returns the expected data values for input coordinate points in the shape, [x, y, z].
+#We, however, need to get the "deformed" coordinate points for each coordinate input [x,y,z]. Since our input "data values"
+#represent the end coordinates of the deformed meshes along each axis (in shape [3,n,n,n]), we need 3 interpolate_3d_mesh 
+#functions that each retrieves the "deformed" coordinates for x, y, and z  axis. 
+#For example, the "deformed" coordinates for [0.4, 0.5, 0.1], we will be [x_interp([0.4, 0.5, 0.1], y_interp[0.4, 0.5, 0.1], x_interp[0.4, 0.5, 0.1])].
+def interpolate_3d_mesh(meshes, grids, vox_size):
+  #define the grid points of the 3d mesh
+  ls = np.linspace(-1, 1, vox_size)
+  y_reg, x_reg,z_reg = np.meshgrid(ls,ls,ls)
+  #make grids into sets of data points
+  warp_coords = np.stack((grids[2].flatten(), grids[1].flatten(), grids[0].flatten()), axis=1)
+  #make regular grids into sets of data points
+  reg_coords_x = x_reg.flatten()
+  reg_coords_y = y_reg.flatten()
+  reg_coords_z = z_reg.flatten()
+  interp_x = LinearNDInterpolator(warp_coords, reg_coords_x)
+  interp_y = LinearNDInterpolator(warp_coords, reg_coords_y)
+  interp_z = LinearNDInterpolator(warp_coords, reg_coords_z)
+  #define the interpolation function along x, y, and z axis
+    #interpolate along xy plane
+  x_verts = interp_x(meshes)
+  y_verts = interp_y(meshes)
+  z_verts = interp_z(meshes)
+ 
+  deformed_batch = []
+  mesh_list = []
+  for i in range(len(x_verts)):
+    vert = np.array([z_verts[i], y_verts[i], x_verts[i]])
     mesh_list.append(vert)
   deformed_verts = np.stack(mesh_list, axis=0)
   return deformed_verts
@@ -173,4 +221,40 @@ def convert_to_forward_warp(X,Y,Z):
   #return the forward warp grids
   return x_fr, y_fr, z_fr
               
+              
+  #given the 3d backward warp mesh X,Y,Z
+#get the forward warp field
+#input
+#X,Y,Z: 3d mesh grid along each axis, in the shape of (grid_size, grid_size, grid_size)
+def convert_to_forward_warp2(X,Y,Z):
+  #logic: using the interpn functionality of scipy, interpolate the regular coordinate grids from the backward warpfields,
+  #thereby converting the backwarp warp into forward
+  max_idx = len(X) - 1
+  #define the regular grid
+  ls = np.linspace(-1, 1,32)
+  y_reg, x_reg,z_reg = np.meshgrid(ls,ls,ls)
+  #minimum value of the regular grid
+  min_reg = x_reg[0]
+  #maximum value of the regular grid
+  max_reg = x_reg[max_idx]
+  ddd_grid_x = np.zeros([len(X), len(X), len(X)])
+  ddd_grid_y = np.zeros([len(X), len(X), len(X)])
+  ddd_grid_z = np.zeros([len(X), len(X), len(X)])
+  for i in range(len(X)):
+    dd_grid_x = np.zeros([len(X), len(X)])
+    dd_grid_y = np.zeros([len(X), len(X)])
+    dd_grid_z = np.zeros([len(X), len(X)])
+    for j in range(len(X)):
+      dd_grid_x[j,:] = griddata(x_reg[i,j,:], X[:,i,j], x_reg[:,i,j], fill_value="extrapolate")
+    print(dd_grid_x)
+    exit()
+    for j in range(len(X)):
+      dd_grid_x[:,i,k] = griddata(dd_grid_x[:,i], x_reg[:,i,k], fill_value="extrapolate")
+    exit()
+      #x_fr[:,i,j] = griddata(X[:,i,j], x_reg[:,i,j],x_reg[:,i,j],fill_value="extrapolate")
+      #y_fr[i,:,j] = griddata(Y[i,:,j], y_reg[i,:,j],y_reg[i,:,j],fill_value="extrapolate")
+      #z_fr[i,j,:] = griddata(Z[i,j,:], z_reg[i,j,:],z_reg[i,j,:],fill_value="extrapolate")
+  #todo: interpolation method
+  #return the forward warp grids
+  return x_fr, y_fr, z_fr
               

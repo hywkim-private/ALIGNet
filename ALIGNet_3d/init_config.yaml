@@ -98,5 +98,5 @@ valid:
   #the type of visualizations
   #custom: visualize as presented in the paper
   #voxel: visualize the voxel representation of valid results
-  visualize_type: voxel
+  visualize_type: custom
   
