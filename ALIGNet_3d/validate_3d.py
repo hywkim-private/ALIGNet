@@ -160,10 +160,9 @@ class result_checker_3d():
           m_faces = np.stack(m_faces, axis=0)
           m_verts = np.stack(m_verts, axis=0)
           #m_verts = np.flip(m_verts, 1)
-          g = grid[i]
+          g = grid[i].to(config_3d.CPU)
           #interpolate the single mesh with the forward warp
           deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g, config_3d.VOX_SIZE)
-          
           #make faces and verts into Tensors so it can make up for the Mesh datatype
           m_faces = torch.Tensor(m_faces)
           deformed_verts = torch.Tensor(deformed_verts)
@@ -253,7 +252,7 @@ class result_checker_3d():
     if get_for_grid:
       i=0
       for g_ in g:
-        x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g_[0],g_[1],g_[2])
+        x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g_)
         for_grid = np.stack([x_fr, y_fr, z_fr])
         g[i] = for_grid
         i+=1

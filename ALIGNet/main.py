@@ -8,40 +8,37 @@ import load_save
 import argparse
 import os
 import torch 
+import config_parse
+
+#given a string of datatype, return its appropriate index
+def get_data_idx(datatype_str):
+  dtype = 0
+  if datatype_str == "plane":
+    dtype = 0
+  return dtype
+    
+
+    
+def train_model(tr, val, model):
+  #make an overfit check if specified by config 
+  result_check = None 
+  if config.RESULT_CHECK:
+    result_check_path = config.MODEL_PATH + '/result_checker.obj'
+    #make the valid dataset
+    val_tar, val_src  = load_data.get_val_dl(
+      val, config.TARGET_PROPORTION_VAL, config.BATCH_SIZE, config.GRID_SIZE, config.AUGMENT_TIMES_VAL, config.MASK_SIZE)
+    if os.path.exists(result_check_path): 
+      result_check = load_obj(result_check_path)
+    else:
+      result_check = validate.result_checker(model, val_tar, val_src)
+  train_.train(model, iter, tr, config.TARGET_PROPORTION, config.BATCH_SIZE, config.GRID_SIZE, a config.AUGMENT_TIMES, config.MASK_SIZE, result_checker=result_check, train_mode=config.TRAIN_MODE, graph_loss=config.GRAPH_LOSS)
+  torch.save(model, config.MODEL_PATH + 'model.pt')
+  if config.RESULT_CHECK:
+    load_save.save_obj(result_check, result_check_path)
 
 
 
 if __name__ == '__main__':
-  
-  def load_ds():
-    #decide and load which type of data to use
-    if args.type == 'vase':
-      d_type = config.VASE 
-    elif args.type == 'plane ':
-      d_type = config.PLANE
-    #load datasets
-    tr, val, test = load_data.load_ds(config.FILE_PATH + args.type + '/datasets/', d_type)
-    return tr, val, test
-    
-  def train_model():
-    #save the iter variable as default or specified by the user
-    iter = 10
-    if args.iter: 
-      iter = args.iter
-    #make an overfit check if specified by config 
-    result_check = None 
-    result_check_path = config.MODEL_PATH + args.name +'/result_checker'
-    if config.RESULT_CHECK:
-       #make the valid dataset
-      val_tar, val_src, val_tar_aug, val_src_aug = load_data.get_val_dl(tr, val, test)
-      if os.path.exists(result_check_path): 
-        obj = load_obj(result_check_path)
-      else:
-        result_check = validate.result_checker(model, val_tar, val_src)
-    train_.train(model, iter, tr, val, test, args.name, result_checker=result_check, train_mode=config.TRAIN_MODE, graph_loss=config.GRAPH_LOSS)
-    torch.save(model.state_dict(), config.MODEL_PATH + args.name +'/'+ args.name+'.pt')
-    load_save.save_obj(result_check, result_check_path)
-    
   config.initialize_config()
   #argument parser
   ap = argparse.ArgumentParser()
@@ -70,90 +67,128 @@ if __name__ == '__main__':
   valid.add_argument("-n", "--name", required=True, type=str,  help="Specify the name of the model")
   valid.add_argument("-v", "--visualize", type=str, help='Specify whether or not to visualize the results')
   
-  
   args = ap.parse_args()
+  #load the configuartion file
+  config = config_parse.load_config('init_config.yaml')
+
+
   #if new data, download data, create, and save
   if args.command == 'data': 
+    #load config
+    config = config_parse.load_config('./init_config.yaml')
+    config_parse.render_data_config(config)
+    #check the type of data (for now, we will only support plane--add more)
     #first, check for existing directory and if not, create a new directory to store data 
-    if args.type == 'vase':
-      file_path = config.FILE_PATH_VASE
-      d_type = config.VASE
-      url = config.URL_VASE
-      
-    if args.type == 'plane':
-      file_path = config.FILE_PATH_PLANE
-      d_type = config.PLANE
-      url = config.URL_PLANE
+    #we assume a all-inclusive imagenet dataset, so only need to download once 
+    url = config_3d.URL_DATA
       
     #download data
-    if not os.path.exists(file_path):
-        os.makedirs(file_path)
-        os.makedirs(file_path +'/datasets')
-        
-    load_data.download_data(url, d_type)
-    tr, val, test = load_data.get_datasets(d_type)
+    if not os.path.exists(config.DATA_PATH):
+      os.makedirs(config.DATA_PATH)
+      
+    #write configuration file
+    config_parse.write_data_config(config, config.DATA_PATH)
+    dtype = get_data_idx(config.DATA_TYPE)
+    #download data and save it to the datapath
+    load_data.download_data(config.URL_DATA, config.DATA_PATH)
+    #load data from the datapath
+    tr, val, test = load_data.load_ds(config.DATA_PATH)
     
     #save datasets to the same directory as the model
-    load_save.save_ds(tr, 'tr', file_path +'/datasets/')
-    load_save.save_ds(val, 'val', file_path +'/datasets/')
-    load_save.save_ds(test, 'test', file_path + '/datasets/')
+    load_save.save_ds(tr, 'tr', config.DATA_PATH)
+    load_save.save_ds(val, 'val', config.DATA_PATH)
+    load_save.save_ds(test, 'test', config.DATA_PATH)
     
-    
-    
+
   #if new model, download and create dataset, make new model
   if args.command == 'new':
-    #first check if the dataset exists
-    if not os.path.exists(config.FILE_PATH + args.type + '/'):
-      print("Dataset not found: create dataset using [data] argument")
-      exit()
-    save_path = config.FILE_PATH + args.name
     #make new  model
-    model = model.ALIGNet(args.name, config.GRID_SIZE).to(config.DEVICE)
-    
+    #----------------handle config---------------------
+    #load and save the model configuration
+    config = config_parse.load_config('./init_config.yaml')
+    #laod train configuration from the init_config file
+    config_parse.render_train_config(config)
+    #from the train config, find the model path and load its config
+    config_parse.render_model_config(config)
+    #from the model config, find the data configurations and load its config 
+    data_config = config_parse.load_config(config_3d.DATA_PATH + 'data_cfg.yaml') 
+    config_parse.render_data_config(data_config)
+    #----------------------------------------------------
+    #first check if the dataset exists
+    if not os.path.exists(config.DATA_PATH):
+      print(f"Dataset not found in path {config.DATA_PATH}: create dataset using [data] argument")
+      exit()
+    #check if the dataset exists
+    if os.path.exists(config.MODEL_PATH):
+      print(f"Model already exists in {config.MODEL_PATH}: use [train] argument to do additional training or create a model with different name")
+      exit()
     #make a directory to save model and dataset
-    if not os.path.exists(config.MODEL_PATH + args.name):
-        os.makedirs(config.MODEL_PATH + args.name)
-        os.makedirs(config.MODEL_PATH + args.name + '/outputs')
-        os.makedirs(config.MODEL_PATH + args.name + '/outputs/loss_graphs')
-        os.makedirs(config.MODEL_PATH + args.name + '/outputs/images')
-    tr, val, test = load_ds()
-    train_model()
+    if not os.path.exists(config.MODEL_PATH):
+        os.makedirs(config.MODEL_PATH)
+        os.makedirs(config.MODEL_PATH + 'outputs/')
+        os.makedirs(config.MODEL_PATH + 'outputs/loss_graphs/')
+        os.makedirs(config.MODEL_PATH + 'outputs/images/')
+        #write model configuration 
+        config_parse.write_model_config(config, config.MODEL_PATH)
+    model = model.ALIGNet().to(config.DEVICE)
+    tr, val, test = load_data.load_ds(config.DATA_PATH)
+    train_model(tr, val, model)
     
     
-  #the commands below (valid and train) both need to be checked if the model exists or not -- error if  not  
-  if not os.path.exists(config.FILE_PATH + args.type + '/'):
-    print("Dataset not found: create dataset using [data] argument")
-    exit()
-  #check if the dataset exists
-  if not os.path.exists(config.MODEL_PATH + args.name + '/'):
-    print("Model not found: create model using [new] argument")
-    exit()
-    
+
   if args.command == 'train':
-    #load the previous model
-    model_path = './' + args.name + '/' + args.name + '.pt'
-    model = load_save.load_model(model_path, args.name).to(config.DEVICE)
-    tr, val, test = load_ds()
-    train_model()
+    #load the target model configuartions 
+    #--------------------------handle config----------------------
+    #render the model configurations
+    config_parse.render_train_config(config)
+    model_config = config_parse.load_config(config.MODEL_PATH + 'model_cfg.yaml')
+    config_parse.render_model_config(model_config)
+    data_config = config_parse.load_config(config.DATA_PATH + 'data_cfg.yaml')
+    config_parse.render_data_config(data_config)
+    #--------------------------------------------------------------
+    #we will check the initialized directories to verify that models/datasets are initialized
+    #the commands below (valid and train) both need to be checked if the model exists or not -- error if  not 
+    if not os.path.exists(config.DATA_PATH):
+      print(f"Dataset not found in path {config.DATA_PATH}: create dataset using [data] argument")
+      exit()
+    #check if the dataset exists
+    if not os.path.exists(config.MODEL_PATH):
+      print(f"Model not found in path {config.MODEL_PATH}: create model using [new] argument")
+      exit()
+    model = torch.load(config.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config.DEVICE)
+    tr, val, test = load_data.load_ds(config.DATA_PATH)
+    tr.to(config.DEVICE)
+    val.to(config.DEVICE)
+    train_model(tr, val, model)
     
-  
   if args.command == 'valid':
+    #--------------------------handle config----------------------
+    #render valid configurations from init_config 
+    config_parse.render_valid_config(config)
+    #render model configurations from model_cfg.yaml found in the model path
+    model_config = config_parse.load_config(config.MODEL_PATH + 'model_cfg.yaml')
+    config_parse.render_model_config(model_config)
+    data_config = config_parse.load_config(config.DATA_PATH + 'data_cfg.yaml')
+    config_parse.render_data_config(data_config)
+    #--------------------------------------------------------------
+    
     #load the previous model
-    model_path = './' + args.name + '/' + args.name + '.pt'
-    model = load_save.load_model(model_path, args.name).to(config.DEVICE)
+    model = torch.load(config.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config.DEVICE)
+    #load the target model configuartions 
+    model_config = config_parse.load_config(config.MODEL_PATH + 'model_cfg.yaml')
     #path to save the visualized image 
-    image_path = './' + args.name + '/outputs/images/'
-    image_path = etc.latest_filename(image_path)
-    vis=True if args.visualize else False
+    image_path = config.MODEL_PATH + 'outputs/images/'
+    image_path = utils.etc.latest_filename_png(image_path)
     #load the neccessary datasets
-    tr, val, test = load_ds()
-    val_tar_dl, val_src_dl, val_tar_dl_aug, val_src_dl_aug = load_data.get_val_dl(tr, val, test)
-    validate.run_validation(model, val_src_dl, val_tar_dl, config.GRID_SIZE, image_path)
-    
-    
+    tr, val, test = load_data.load_ds(config.DATA_PATH)
+    tr.to(config.DEVICE)
+    val.to(config.DEVICE)
+    val_tar_dl, val_src_dl = load_data.get_val_dl(
+      val, config.TARGET_PROPORTION_VAL, config.BATCH_SIZE, config.GRID_SIZE, config.AUGMENT_TIMES_VAL, config.MASK_SIZE)
+    result_checker = validate.result_checker(model, val_tar_dl, val_src_dl, checker_board=True)
+    result_checker.update()
+    result_checker.visualize(image_path)
       
       
       
-    
-    
-  
+      

@@ -142,7 +142,8 @@ def visualize_results_3d_vox(src_batch, tar_batch, tar_est, def_grids, batch_ind
   tar_batch = tar_batch[batch_index]
   tar_est = tar_est[batch_index]
   def_grids = def_grids[batch_index]
-  fig = plt.figure(figsize=(15*len(index), 60))
+  fig = plt.figure(figsize=(15,5*len(index)),constrained_layout=True)
+  gs = fig.add_gridspec(len(index), 3)
   for idx,i in enumerate(index):
     #make the deformation grid lines 
     def_grid = def_grids[idx]
@@ -150,7 +151,6 @@ def visualize_results_3d_vox(src_batch, tar_batch, tar_est, def_grids, batch_ind
     def_x = sample_step(def_grid[0],8).cpu().numpy()
     def_y = sample_step(def_grid[1],8).cpu().numpy()
     def_z = sample_step(def_grid[2],8).cpu().numpy()
-    #TODO: CHANGE THIS TO PROPER INTERPOLATION (converting coordinates)
     def_x = remap_local(def_x, 32)
     def_y = remap_local(def_y, 32)
     def_z = remap_local(def_z, 32)
@@ -162,36 +162,32 @@ def visualize_results_3d_vox(src_batch, tar_batch, tar_est, def_grids, batch_ind
     #make the regular grid lines
     reg_x, reg_y, reg_z = np.meshgrid(ls,ls,ls)
     reg_line = get_linecol(reg_x, reg_y, reg_z)
-   
-    ax1 = fig.add_subplot(len(index),3,idx*3+1,projection='3d', computed_zorder=True)
+    ax1 = fig.add_subplot(gs[idx,0],projection='3d', computed_zorder=True)
     ax1.set_title('Source Voxel')
     ax1.set_xlabel("x")
     ax1.set_ylabel('y')
     ax1.set_zlabel('z')
-    fig.tight_layout() 
     ax1.voxels(src_batch[i], edgecolor='k', zorder=0)
     for k in range(len(reg_line)):
       ax1.plot(reg_line[k,:,0],reg_line[k,:,1],reg_line[k,:,2],color="red", zorder=100+k)
-
-    ax2 = fig.add_subplot(len(index), 3, idx*3+2,projection='3d', computed_zorder=True)
+    ax2 = fig.add_subplot(gs[idx,1], projection='3d', computed_zorder=True)
     ax2.set_title('Target Voxel')
     ax2.set_xlabel("x")
     ax2.set_ylabel('y')
     ax2.set_zlabel('z')
-    fig.tight_layout() 
     ax2.voxels(tar_batch[i], edgecolor='k', zorder=0)
     for k in range(len(reg_line)):
       ax2.plot(reg_line[k,:,0],reg_line[k,:,1],reg_line[k,:,2],color="red", zorder=100+k)
-
-    ax3 = fig.add_subplot(len(index), 3, idx*3+3,projection='3d', computed_zorder=True)
+    ax3 = fig.add_subplot(gs[idx,2], projection='3d', computed_zorder=True)
     ax3.set_title('Estimated Voxel')
     ax3.set_xlabel("x")
     ax3.set_ylabel('y')
     ax3.set_zlabel('z')
-    fig.tight_layout()
     ax3.voxels(tar_est[i],  edgecolor='k', zorder=0)
     for k in range(len(def_line)):
       ax3.plot(def_line[k,:,0],def_line[k,:,1],def_line[k,:,2],color="red", zorder=100+k)
+    ax3.voxels
+  gs.tight_layout(fig) 
   return fig
 
 
@@ -298,7 +294,11 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
       ),
       row=idx+1, col=3
     )
-  fig.update_layout(height=600*len(index), width=1200, title_text="Source, Target, and Target_Estimate Pointclouds")
+  fig.update_layout(
+    height=600*len(index), 
+    width=1200, 
+    title_text="Source, Target, and Target_Estimate Pointclouds",
+    margin=dict(r=10, l=10, b=10, t=10))
   return fig 
   
   
@@ -308,7 +308,6 @@ def visualize_results_3d_pt(src_batch, tar_batch, tar_est, batch_index, index):
 #batch_index: the index of batch from which to sample data
 #index: list of sample indexes
 def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch_index, index):
-  
   src_mesh = src_mesh[batch_index]
   tar_pt = tar_pt[batch_index]
   tar_est_mesh = tar_est_mesh[batch_index]
@@ -328,7 +327,6 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch
     tar_est_mesh_vert = tar_est_mesh_verts[i]
     tar_est_mesh_face = tar_est_mesh_faces[i]
     def_grid = def_grids[i]
-
     #define the regular (undeformed grid)
     #downsample the deformation grids
     def_i = sample_step(def_grid[0],8)
@@ -347,6 +345,7 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch
           i=src_face[:,0],
           j=src_face[:,1],
           k=src_face[:,2],
+          color='#7f7f7f',
     )
     tar_trace = go.Scatter3d(
         x=tar_pt_point[:,0],
@@ -355,7 +354,7 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch
         mode='markers',
         marker=dict(
             size=1,
-            colorscale='Viridis',   # choose a colorscale
+            color='#7f7f7f',   # choose a colorscale
             opacity=0.8
         )
     )
@@ -366,6 +365,7 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch
       i=tar_est_mesh_face[:,0],
       j=tar_est_mesh_face[:,1],
       k=tar_est_mesh_face[:,2],
+      color='#7f7f7f'
     )
     fig.add_trace(
       src_trace,
@@ -391,7 +391,13 @@ def visualize_results_3d_custom(src_mesh, tar_pt, tar_est_mesh, def_grids, batch
       def_lines,
       rows=idx+1, cols=3
     )
-  fig.update_layout(height=400*len(index), width=1800, title_text="Source Meshes, Target PointClouds, and Target_Estimate Meshes")
+    fig.update_layout(
+      height=560*len(index), 
+      width=3000,
+      showlegend=False,
+      margin=dict(r=5, l=5, b=5, t=5),
+      title_text="Source Meshes, Target PointClouds, and Target_Estimate Meshes",
+      )
   return fig 
   
   

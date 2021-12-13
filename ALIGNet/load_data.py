@@ -13,21 +13,14 @@ from pathlib import Path
 
 
 #download training data from the specified url
-#datatype = 0 for vase, 1 for plane
-def download_data(url, data_type):
+def download_data(url, extract_path):
   filename = wget.download(url)
   zf = ZipFile(filename, 'r')
-  if data_type == 0:
-    zf.extractall(config.FILE_PATH_VASE)
-  elif data_type == 1:
-    zf.extractall(config.FILE_PATH_PLANE)
+  zf.extractall(extract_path)
   zf.close()
+  
 #load raw plane datasets
-def load_ds(path, ds_index=0):
-  ds_name = 'vase'
-  if ds_index == 1:
-    ds_name = 'plane'
-
+def load_ds(path):
   tr = torch.load(path+'tr'+ '.pt')
   val = torch.load(path+'val'+ '.pt')
   test = torch.load(path+'test'+ '.pt')
@@ -104,6 +97,7 @@ class Augment(Dataset):
     self.batch_size = batch_size
     self.aug = augment.random_augmentation(transform_no)
     self.augment_times = augment_times
+    self.augment = False if augment_time==0 else True 
     #first augment the original tar_list to match the returning batch size, then perform augmentation
     tar_list = []
     for i in range(self.augment_times):
@@ -144,29 +138,32 @@ class Augment(Dataset):
 
   def collate_fn(self, batch):
     #if val_set, the batch will be a single augmented batch
+    
     if self.val_set:
-      aug_batch = np.concatenate([*batch])
-      if self.transform and self.random_mask:
-        aug_batch = self.deform(aug_batch)
-        aug_batch = self.mask(aug_batch)  
-      elif self.transform:
-        aug_batch = self.deform(aug_batch)
-      elif self.random_mask:
-        aug_batch = self.mask(aug_batch) 
-      return aug_batch
+      if self.aug:
+        batch = np.concatenate([*batch])
+        if self.transform and self.random_mask:
+          batch = self.deform(batch)
+          batch = self.mask(batch)  
+        elif self.transform:
+          batch = self.deform(batch)
+        elif self.random_mask:
+          batch = self.mask(batch)
+      return batch
     aug_batch, tar_batch = zip(*batch)
     aug_batch = np.concatenate(list(aug_batch))
     tar_batch = np.concatenate(list(tar_batch))
-    #the batch will be a batchx2xNxWxH)
-    if self.transform and self.random_mask:
-      aug_batch = self.deform(aug_batch)
-      tar_batch = aug_batch.copy()
-      aug_batch = self.mask(aug_batch)  
-    elif self.transform:
-      aug_batch = self.deform(aug_batch)
-      tar_batch = aug_batch.copy()
-    elif self.random_mask:
-      aug_batch = self.mask(aug_batch) 
+    if self.aug:
+      #the batch will be a batchx2xNxWxH)
+      if self.transform and self.random_mask:
+        aug_batch = self.deform(aug_batch)
+        tar_batch = aug_batch.copy()
+        aug_batch = self.mask(aug_batch)  
+      elif self.transform:
+        aug_batch = self.deform(aug_batch)
+        tar_batch = aug_batch.copy()
+      elif self.random_mask:
+        aug_batch = self.mask(aug_batch) 
     return aug_batch, tar_batch
 
 #helper function for the class pre_augment
@@ -210,3 +207,45 @@ class pre_augment(Dataset):
 
 
   
+
+
+#load the datasets and split accordingly to the global definition
+#we split this functionality to gurantee manual augmentation of data on same randomly-split datasets
+def get_datasets(vase=True):
+  file_path = FILE_PATH_PLANE
+  if vase:
+    file_path = FILE_PATH_VASE
+  #H array containing both source and target images
+  ds = Load_HDF5(file_path, get_all=True, transform=ToTensor())
+  #split data into train, validation, test sets
+  TRAIN_SIZE = len(ds)-VAL_SIZE-TEST_SIZE
+  Trainset, Validset, Testset = random_split(ds,[TRAIN_SIZE, VAL_SIZE, TEST_SIZE])
+  return  Trainset, Validset, Testset
+
+
+
+#given train, valid, and test sets, augment data 
+def aug_datasets(dataset, split_proportion, batch_size, grid_size, augment_times, mask_size):
+  data_size = len(dataset)
+  tar, src = random_split(dataset, [int(data_size*split_proportion), data_size - int(data_size*split_proportion)])
+  tar_aug = Augment(tar, batch_size, 128, augment_times = augment_times, transform = True, random_mask = True, transform_no =2)
+  src_aug = Expand(src, len(tar_aug))
+  return tar_aug, src_aug
+
+#given dataset, return the appropriate dataloader
+def get_dataloader(ds, augment=False, shuffle=False):
+  SHUFFLE = shuffle 
+  if augment:
+    dl = DataLoader(ds, batch_size=BATCH_SIZE, collate_fn=ds.collate_fn, shuffle=SHUFFLE)
+  else:
+    dl = DataLoader(ds, batch_size=BATCH_SIZE, shuffle=SHUFFLE)  
+  return dl
+
+def get_val_dl(val, split_proportion, batch_size, grid_size, augment_times, mask_size):
+  tar, src = aug_datasets(val, split_proportion, batch_size, grid_size, augment_times, mask_size)
+  val_tar_dl = get_dataloader(tar, augment=True, shuffle=True)
+  val_src_dl = get_dataloader(src, shuffle=True)
+  #pre augment the data by loading them before execution
+  val_tar_ds  = pre_augment(val_tar_dl_aug, batch_size=batch_size, val_set=True, shuffle=True)
+  val_tar_dl = DataLoader(val_tar_ds_aug, batch_size, shuffle=True)
+  return val_tar_dl, val_src_dl
