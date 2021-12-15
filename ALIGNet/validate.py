@@ -6,11 +6,10 @@ import numpy as np
 import config
 import skimage
 import load_data
-import etc
-import loss_functions as loss_f
+from utils import etc
+from utils.loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
 import matplotlib
 import matplotlib.pyplot as plt
-from loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
 
 #functionality that creates a checkerboard mask the size of grid
 def get_checkerboard(image_size):
@@ -33,14 +32,14 @@ def apply_checkerboard(batch, imsize):
 #given source and target validation  dataloaders, perform all validation operations
 #save_img is the path to save the img
 @torch.no_grad()
-def validate(model, source_image, target_image, grid_size, checker_board=False):
+def validate(model, source_image, target_image, grid_size, image_size, checker_board=False):
   input_image = torch.stack([source_image, target_image])
   input_image  = input_image.permute([1,0,2,3])
   diff_grid = model.forward(input_image)
   tar_est = model.warp(diff_grid, source_image)
   tar_est = tar_est.squeeze(dim=1)
   #calculate the loss for the image
-  loss = get_loss(target_image, tar_est, diff_grid)
+  loss = get_loss(target_image, tar_est, grid_size,  diff_grid, image_size, config.DEVICE)
   #apply checkerboard and run warp again if specified by checker_board
   if checker_board:
     source_ck = apply_checkerboard(source_image, 128)
@@ -50,7 +49,7 @@ def validate(model, source_image, target_image, grid_size, checker_board=False):
 
 #run loop for the dataloaders to run the validate() operation
 @torch.no_grad()
-def validate_dl(model, source_dl, target_dl, grid_size, checker_board=False):
+def validate_dl(model, source_dl, target_dl, grid_size, image_size, checker_board=False):
   target_iter = iter(target_dl)
   source_iter = iter(source_dl)
   #we will also create lists for tar and src since dataloaders may shuffle them in random orders
@@ -66,7 +65,7 @@ def validate_dl(model, source_dl, target_dl, grid_size, checker_board=False):
     source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(config.DEVICE)
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3])
-    tar_est, diff_grid, loss = validate(model, source_image, target_image, grid_size, checker_board)
+    tar_est, diff_grid, loss = validate(model, source_image, target_image, grid_size, image_size, checker_board)
     if checker_board:
       target_image = apply_checkerboard(target_image, 128)
       source_image = apply_checkerboard(source_image, 128)
@@ -128,8 +127,8 @@ class result_checker():
   
   #run the validate function and update the tr_val_gap parameter
   #include a train loss if youre validating for a training loop
-  def update(self,train_loss=None):
-    tar_list, src_list, est_list, grid_list, avg_loss = validate_dl(self.model, self.valid_src, self.valid_tar, config.GRID_SIZE, checker_board=self.checker_board)
+  def update(self, train_loss=None):
+    tar_list, src_list, est_list, grid_list, avg_loss = validate_dl(self.model, self.valid_src, self.valid_tar, config.GRID_SIZE, config.IMAGE_SIZE,checker_board=self.checker_board)
     self.avg_loss = avg_loss
     self.tar_list = tar_list
     self.src_list = src_list

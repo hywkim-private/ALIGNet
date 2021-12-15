@@ -20,9 +20,9 @@ data:
  #number of validation data to get from the downloaded raw data
  val_datasize: 30
  #the path from which to load raw data
- load_data_path: ./data/train/02747177/
+ load_data_path: ./data/train/02828884/
  #the path to which data will be saved 
- data_path: ./data/datasets/nan/0/
+ data_path: ./data/datasets/nan/2/
  augment:
   #number of points to sample from mesh data
   pt_sample: 10000
@@ -35,7 +35,7 @@ data:
 #NO EFFECT IF NOT INITIALIZING A NEW MODEL 
 model:
  #the path where model is saved
- model_path: ./obj/model_57/
+ model_path: ./obj/model_66/
  #index of the model to use: a variety of models are defined in model/conv
  model_idx: 2
  #the size of the grid output by the network (before upsampling is applied)
@@ -45,26 +45,26 @@ model:
  #maximum number of features to learn in the network => defines complexity of the model
  maxfeat: 64
  #the weight value to apply to the L_TV_Loss
- lambda: 2.0e-3
+ lambda: 1.0e-4
  #setting this parameter will parameterize offset values, enabling the model to learn them 
- learn_offset: false
+ learn_offset: true
  #path of the data to use
  #(define relative to the uppermost directory)
- data_path: ./data/datasets/nan/0/
+ data_path: ./data/datasets/plane/3/
  
 #configurations for training
 #has effect in all modes 
 train:
  #path of the model to train
- model_path: ./obj/model_plane55/
+ model_path: ./obj/model_65/
  #weight applied to gradient in each training step 
- step: 1.0e-3
+ step: 1.0e-5
  #size of a single batch
- batch_size: 50
+ batch_size: 20
  #number of epochs to run in a single iteration
- epochs: 202
+ epochs: 50
  #number of iterations to run 
- iter: 50
+ iter: 500
  #range of mask size to apply in augmenting target
  #must be smaller than vox_size
  mask_size:
@@ -75,15 +75,15 @@ train:
  #how many times to augment the validation target dataset
  augment_times_val: 1
  #whether we are running checks for validation steps 
- result_check: true
+ result_check: false
  #whether we are graphing the loss (saved in result-checker object)
- graph_loss: true
+ graph_loss: false
  
 #configurations for valid operation
 #only has effect in valid mode
 valid:
  #path of the path to use foir validation 
- model_path: ./obj/model_plane55/
+ model_path: ./obj/model_65/
  #how many times to augment the validation dataset 
  augment_times_val: 1
  #size of a single batch
@@ -99,3 +99,4 @@ valid:
   #custom: visualize as presented in the paper
   #voxel: visualize the voxel representation of valid results
   visualize_type: custom
+  

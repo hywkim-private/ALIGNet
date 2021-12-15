@@ -35,10 +35,10 @@ class warp_layer_3d(nn.Module):
   def __init__(self):
     super().__init__()
   def forward(self, x, src_batch):
-    x = x.permute(0,2,3,4,1)
     #calculate target estimation
     #input of shape (N,C,D,H,W)
     #grid of shape (N,D,H,W,3)
+    x = x.permute(0,4,3,2,1)
     x = nn.functional.grid_sample(src_batch.unsqueeze(0).permute([1,0,2,3,4]), x, mode='bilinear', padding_mode="border")
     return x
 
@@ -70,6 +70,7 @@ class ALIGNet_3d(nn.Module):
     self.cumsum_layer = cumsum_layer_3d(grid_size, vox_size, learn_offset)
     self.warp_layer = warp_layer_3d()
     self.axial_layer = axial_layer_3d(grid_size)
+    
   #returns a differential grid
   def forward(self, x, src):
     x = self.conv_layer(x)

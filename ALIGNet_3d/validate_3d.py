@@ -147,7 +147,7 @@ class result_checker_3d():
     #then append them altogether in the Mesh datatype
     else: 
       def_mesh_list = []
-      for mesh, for_grid in zip(self.src_mesh_ori, self.for_grid_list):
+      for mesh, grid in zip(self.src_mesh_ori, self.def_grid_list):
         #def grid of shape (N,C,D,H,W)
         vertice_list = []
         face_list = []
@@ -160,10 +160,9 @@ class result_checker_3d():
           m_faces = np.stack(m_faces, axis=0)
           m_verts = np.stack(m_verts, axis=0)
           #m_verts = np.flip(m_verts, 1)
-          g = for_grid[i]
+          g = grid[i].to(config_3d.CPU)
           #interpolate the single mesh with the forward warp
           deformed_verts = ops_3d.interpolate_3d_mesh(m_verts, g, config_3d.VOX_SIZE)
-          
           #make faces and verts into Tensors so it can make up for the Mesh datatype
           m_faces = torch.Tensor(m_faces)
           deformed_verts = torch.Tensor(deformed_verts)
@@ -190,7 +189,7 @@ class result_checker_3d():
       self.tar_mesh.append(ops.cubify(self.tar_list[i], 1))
       self.src_mesh.append(ops.cubify(self.src_list[i], 1))
       self.est_mesh.append(ops.cubify(self.est_list[i], 1))
-    self.mesh=True
+    self.mesh = True
 
 
   def get_pointcloud_from_mesh(self, num_samples):
@@ -239,14 +238,13 @@ class result_checker_3d():
   def validate_3d(self, model, source_image, target_image, grid_size, get_for_grid=False):
     input_image = torch.stack([source_image, target_image])
     input_image  = input_image.permute([1,0,2,3,4])
-    diff_grid, def_grid, tar_est= model.forward(input_image, source_image)
+    diff_grid, def_grid, tar_est = model.forward(input_image, source_image)
     #we will use def grid to apply warp directly to mesh
     tar_est = tar_est.squeeze(dim=1)
     #convert the backward ward into forward ward
     g = def_grid.clone() 
     g = g.to(config_3d.CPU)
     g = g.detach().numpy()
-    
     #calculate the loss for the image
     init_grid = ops_3d.init_grid_3d(grid_size).to(config_3d.DEVICE)
     loss = loss_3d.get_loss_3d(target_image, tar_est, diff_grid, init_grid, config_3d.LAMBDA, config_3d.GRID_SIZE, config_3d.VOX_SIZE)
@@ -254,7 +252,7 @@ class result_checker_3d():
     if get_for_grid:
       i=0
       for g_ in g:
-        x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g_[0],g_[1],g_[2])
+        x_fr, y_fr, z_fr = ops_3d.convert_to_forward_warp(g_)
         for_grid = np.stack([x_fr, y_fr, z_fr])
         g[i] = for_grid
         i+=1
@@ -262,6 +260,7 @@ class result_checker_3d():
       for_grid_batch = np.stack(for_grid_list)
       return tar_est, diff_grid, def_grid, for_grid_batch, loss
     return tar_est, diff_grid, def_grid, loss
+    
   #run loop for the dataloaders to run the validate() operation
   #if get_mesh param is set to true, also return the mesh representation of src dataset (returns 7 results instead of 6 )
   @torch.no_grad()

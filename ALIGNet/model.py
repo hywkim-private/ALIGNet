@@ -3,10 +3,9 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import grid_helper
 import augment
 from imgaug import augmenters as iaa
-
+from utils import grid_helper
 
 
 
@@ -83,9 +82,8 @@ class conv_layer(nn.Module):
 
 #define the model class
 class ALIGNet(nn.Module):
-  def __init__(self, name, grid_size):
+  def __init__(self, grid_size):
     super().__init__()
-    self.name = name 
     self.conv_layer = conv_layer(grid_size)
     self.warp_layer = warp_layer(grid_size)
     self.axial_layer = axial_layer(grid_size)\

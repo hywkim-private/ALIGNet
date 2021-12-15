@@ -19,6 +19,9 @@ import config_parse
 
 #TODO: CREATE COLLATE_FN FOR DS IN CONVERT_TYPE.PY
 
+
+#MAJOR ERROR: EITHER SRC BATCH IS BEING FLIPPED SOMEWHERRE OR GRID_SAMPLE NOT TAKING FROM THE RIGHT VOXELS
+
 #given a string of datatype, return its appropriate index
 def get_data_idx(datatype_str):
   dtype = 0
@@ -29,6 +32,14 @@ def get_data_idx(datatype_str):
 
 #load and augment train and valid datasets
 def get_ds(file_path, tr_size, val_size, total_num, pt_sample):
+  #first check if the requested tr_size is not larger than the number of files present
+  num_files = len(os.listdir(file_path))
+  if tr_size > num_files:
+    print(f"The requested train size {tr_size} is greater than the number of files present: {num_files} in directory {file_path}")
+    exit()
+  if val_size > num_files:
+    print(f"The requested train size {tr_size} is greater than the number of files present: {num_files} in directory {file_path}")
+    exit()
   tr_index, val_index = datasets.sample_index(tr_size, val_size, total_num)
   tr_mesh = io_3d.Load_Mesh(file_path, sample_index=tr_index)
   val_mesh = io_3d.Load_Mesh(file_path, sample_index=val_index)
@@ -49,13 +60,14 @@ def train_model(tr, val, model_path):
     val_tar, val_src = preprocess.datasets.get_val_dl_3d(
       val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
     if os.path.exists(result_check_path): 
-      obj = io_3d.load_obj(result_check_path + 'result_checker.obj')
+      result_check = io_3d.load_obj(result_check_path + 'result_checker.obj')
     else:
       os.makedirs(result_check_path)
       result_check = validate_3d.result_checker_3d(model, val_tar, val_src)
   run_3d.train_3d(model, model_path, tr, result_checker=result_check, graph_loss=config_3d.GRAPH_LOSS)
   #model is already saved in the run operation
-  io_3d.save_obj(result_check, result_check_path)
+  if config_3d.RESULT_CHECK:
+    io_3d.save_obj(result_check, result_check_path)
 
 if __name__ == '__main__':
   #initialize all config settings
@@ -109,13 +121,14 @@ if __name__ == '__main__':
     #download data
     if not os.path.exists(config_3d.DATA_PATH):
       os.makedirs(config_3d.DATA_PATH)
+      
     #write configuration file
     config_parse.write_data_config(config, config_3d.DATA_PATH)
     #download only if the download flag is set
     if args.download:
       model.io_3d.download_zip(config_3d.URL_DATA, config_3d.DATA_PATH)
     dtype = get_data_idx(config_3d.DATA_TYPE)
-    tr, val = get_ds(config_3d.LOAD_PATH, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
+    tr, val = get_ds(config_3d.LOAD_DATA_PATH, config_3d.TRAIN_SIZE, config_3d.VAL_SIZE, config_3d.TRAIN_SIZE+config_3d.VAL_SIZE, config_3d.PT_SAMPLE)
     
     #save datasets to the same directory as the model
     model.io_3d.save_ds(tr, 'tr', config_3d.DATA_PATH)

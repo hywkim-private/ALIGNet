@@ -1,19 +1,19 @@
 import torch 
 import config
-import grid_helper
+from . import grid_helper
 
 
-def L2_Loss(target_image, warped_image):
+def L2_Loss(target_image, warped_image, image_size):
   batch,_,_ = target_image.shape
   sum_check = torch.norm(target_image - warped_image, p=2)/batch
-  sum_check = sum_check/(128*128)
+  sum_check = sum_check/(image_size*image_size)
   L2_Loss = sum_check
   return L2_Loss
 
-def L_TV_Loss(diff_grid, grid_size, lambda_):
+def L_TV_Loss(diff_grid, grid_size, lambda_, device):
   #create the identity differential grid  
   batch, _,w,h = diff_grid.shape
-  diff_i_grid = grid_helper.init_grid(grid_size)
+  diff_i_grid = grid_helper.init_grid(grid_size).to(device)
   diff_i_grid = diff_i_grid.view(2,grid_size,grid_size)
   diff_i_grid_x = diff_i_grid[0]
   diff_i_grid_y = diff_i_grid[1]
@@ -23,9 +23,9 @@ def L_TV_Loss(diff_grid, grid_size, lambda_):
   L_TV_Loss = L_TV_Loss * lambda_
   return L_TV_Loss
   
-def get_loss(tar_img, tar_est, diff_grid):
-  L2_Loss_ = L2_Loss(tar_img, tar_est)
-  L_TV_Loss_ = L_TV_Loss(diff_grid, 8, 1e-3)
+def get_loss(tar_img, tar_est, grid_size, diff_grid, image_size, device):
+  L2_Loss_ = L2_Loss(tar_img, tar_est, image_size)
+  L_TV_Loss_ = L_TV_Loss(diff_grid, grid_size, 1e-3, device)
   loss = L_TV_Loss_ + L2_Loss_
   return loss
     
