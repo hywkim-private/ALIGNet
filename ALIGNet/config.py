@@ -22,8 +22,7 @@ def initialize_config():
 
     #parameters for valid 
     global NUM_SAMPLE 
-    global VISUALIZE_TYPE
-    
+
     #parameters for data config 
     global TARGET_PROPORTION
     global TARGET_PROPORTION_VAL
@@ -33,21 +32,20 @@ def initialize_config():
     global LOAD_DATA_PATH
     #Specify the download url
     global URL_DATA
-    global PT_SAMPLE
     global DATA_TYPE
     
     #signifies which model to use 
     global MODEL_IDX
     #parameters for the warp-field/grid
     global GRID_SIZE
-    
+    global IMAGE_SIZE
     #number of features to train for the model
     global MAXFEAT
     global LAMBDA
     global LEARN_OFFSET
     global DATA_TYPE
     global DATA_PATH
-
+    
     
     #Specify the download url
     global URL_DATA

@@ -4,8 +4,8 @@ from torch.autograd import Variable
 import torch.optim as optim
 import model
 import validate
-import grid_helper
-from loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
+from utils import grid_helper
+from utils.loss_functions import L2_Loss, L_TV_Loss, get_loss, avg_loss
 
   
 #run the model for a single epoch
@@ -43,7 +43,7 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
       diff_grid = model.forward(input_image)
       tar_est = model.warp(diff_grid, src_batch)
       tar_est = tar_est.squeeze(dim=1)
-      loss = get_loss(tar_batch, tar_est, diff_grid)
+      loss = get_loss(tar_batch, tar_est, config.GRID_SIZE, diff_grid, config.IMAGE_SIZE, config.DEVICE)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()
