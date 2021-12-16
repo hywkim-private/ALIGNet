@@ -1,5 +1,5 @@
 # ALIGNet
-A pytorch implementation of ALIGNet, developed by Prof. Rana Hanocka.
+A pytorch implementation of ALIGNet, original development by Prof. Rana Hanocka.
 
 0. Navigate to ALIGNet or ALIGNet_3d 
 
