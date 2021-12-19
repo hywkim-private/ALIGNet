@@ -93,7 +93,10 @@ class ALIGNet(nn.Module):
     diff_grid = self.axial_layer(x)
     x = self.warp_layer(diff_grid, src)
     return x, diff_grid
+  #only used for validation
+  def warp(self, diff_grid, src):
+    x = self.warp_layer(diff_grid, src)
+    return x
     
 
 
-# TODO: check https://oboiko.medium.com/distributed-training-with-pytorch-d1fa5f57b40

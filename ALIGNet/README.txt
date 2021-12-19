@@ -36,6 +36,6 @@ and run the model.
 will be slower than running on a single gpu, due to the significant overhead caused by
 copying each batch of tensor to multiple devices.
 -Only use the parallel mode if you are either using a significantly heavy network, a very 
-large datasize, or very large batch inputs
+large datasize, very large batch inputs, or if your processor runs out of memory during execution
 -Generally, the data parallel mode is not really necessary for the 2d model since it does well
 on a single gpu
