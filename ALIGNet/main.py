@@ -7,6 +7,7 @@ import load_data
 import argparse
 import os
 import torch 
+import torch.nn as nn
 import config_parse
 
 #given a string of datatype, return its appropriate index
@@ -18,7 +19,7 @@ def get_data_idx(datatype_str):
     
 
     
-def train_model(tr, val, model):
+def train_model(tr, val, model, parallel=False):
   #make an overfit check if specified by config 
   result_check = None 
   if config.RESULT_CHECK:
@@ -115,6 +116,8 @@ if __name__ == '__main__':
     config_parse.render_train_config(cfg)
     #from the train config, find the model path and load its config
     config_parse.render_model_config(cfg)
+    #render settings config
+    config_parse.render_settings(cfg)
     #from the model config, find the data configurations and load its config 
     data_config = config_parse.load_config(config.DATA_PATH + 'data_cfg.yaml') 
     config_parse.render_data_config(data_config)
@@ -136,8 +139,13 @@ if __name__ == '__main__':
         #write model configuration 
         config_parse.write_model_config(cfg, config.MODEL_PATH)
     model = model.ALIGNet(config.GRID_SIZE).to(config.DEVICE)
+    #parallize the model on multiple devices if possible
+    if config.NUM_GPU > 0:
+      #param that defines whether we are going to use distributed model
+      parallel=True
+      print(f"Training on {config.NUM_GPU} devices")
     tr, val = load_data.load_ds(config.DATA_PATH)
-    train_model(tr, val, model)
+    train_model(tr, val, model, parallel=parallel)
     
     
 
@@ -146,6 +154,8 @@ if __name__ == '__main__':
     #--------------------------handle config----------------------
     #render the model configurations
     config_parse.render_train_config(cfg)
+    #render settings config
+    config_parse.render_settings(cfg)
     model_config = config_parse.load_config(config.MODEL_PATH + 'model_cfg.yaml')
     config_parse.render_model_config(model_config)
     data_config = config_parse.load_config(config.DATA_PATH + 'data_cfg.yaml')
@@ -160,14 +170,21 @@ if __name__ == '__main__':
     if not os.path.exists(config.MODEL_PATH):
       print(f"Model not found in path {config.MODEL_PATH}: create model using [new] argument")
       exit()
-    model = torch.load(config.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config.DEVICE)
-    tr, val = load_data.load_ds(config.DATA_PATH)
+    model = torch.load(config.MODEL_PATH + 'model.pt', map_location=torch.device('cpu'))
+    #parallize the model on multiple devices if possible
+    if config.NUM_GPU > 0: 
+      print(f"Training on {config.NUM_GPU} devices")
+    tr = torch.load(config.DATA_PATH + 'tr'+ '.pt')
+    val = torch.load(config.DATA_PATH + 'val'+ '.pt')
+
     train_model(tr, val, model)
     
   if args.command == 'valid':
     #--------------------------handle config----------------------
     #render valid configurations from init_config 
     config_parse.render_valid_config(cfg)
+    #render settings config
+    config_parse.render_settings(cfg)
     #render model configurations from model_cfg.yaml found in the model path
     model_config = config_parse.load_config(config.MODEL_PATH + 'model_cfg.yaml')
     config_parse.render_model_config(model_config)

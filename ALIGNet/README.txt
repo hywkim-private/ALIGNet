@@ -25,3 +25,17 @@ Using virtual environments (pipenv)
 -Define all the necessary parameters in init_config => valid (read the description for each parameter)
 -run python main.py valid to run validation as specified in init_config.yaml
 -check [model_path]/outputs/images/ for results (creates .png files with the latest integer numbering as its file name)
+
+7. Using distributed data parallel
+-If you are running on multiple gpus, then you can train the model in parallel
+-set the num_gpu parameter in init_config to however many gpus you need to use,
+and run the model.
+
+*CAUTION
+-The distributed data parallel model, if run on a light model with small batch data size,
+will be slower than running on a single gpu, due to the significant overhead caused by
+copying each batch of tensor to multiple devices.
+-Only use the parallel mode if you are either using a significantly heavy network, a very 
+large datasize, or very large batch inputs
+-Generally, the data parallel mode is not really necessary for the 2d model since it does well
+on a single gpu

@@ -35,8 +35,7 @@ def apply_checkerboard(batch, imsize):
 def validate(model, source_image, target_image, grid_size, image_size, checker_board=False):
   input_image = torch.stack([source_image, target_image])
   input_image  = input_image.permute([1,0,2,3])
-  diff_grid = model.forward(input_image)
-  tar_est = model.warp(diff_grid, source_image)
+  tar_est, diff_grid = model.forward(input_image, source_image)
   tar_est = tar_est.squeeze(dim=1)
   #calculate the loss for the image
   loss = get_loss(target_image, tar_est, grid_size,  diff_grid, image_size, config.DEVICE)
