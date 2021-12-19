@@ -6,6 +6,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 import config_3d
+import multiprocess_3d
 from model import loss_3d, io_3d, ops_3d
 from preprocess import datasets
   
@@ -66,9 +67,7 @@ def run_model(model,  src_loader, tar_loader, grid_size, result_checker=None, gr
     if not result_checker == None:
       result_checker.update(avg_epoch_loss)
       print(f'Validation Loss in Epoch {i}: {result_checker.avg_loss}')
-    """if (not result_checker == None) and graph_loss:
-    print("Printing graph..")
-    result_checker.print_graph(save_path = './' + model.name + '/outputs/loss_graphs/')"""
+
   
 
 
@@ -79,10 +78,15 @@ def run_model(model,  src_loader, tar_loader, grid_size, result_checker=None, gr
 def train_3d(model, model_path, tr, result_checker=None, graph_loss=False):
   for i in range(config_3d.ITER):
     tr_tar, tr_src = datasets.aug_datasets_3d(tr, 0, config_3d.TARGET_PROPORTION, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_TR, config_3d.MASK_SIZE)
-    tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
-    tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
-    tr_tar = tr_tar_dl
-    tr_src = tr_src_dl
-    run_model(model,tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
-    io_3d.save_model(model, model_path, 'model.pt')
+    if config_3d.NUM_GPU > 1:
+      multiprocess_3d.run_parallel(
+        config_3d.NUM_GPU, model, tr_src, tr_tar, config_3d.GRID_SIZE, config_3d.VOX_SIZE, config_3d.BATCH_SIZE, config_3d.EPOCHS, config_3d.STEP, config_3d.LAMBDA, result_checker = result_checker, graph_loss=graph_loss)
+      io_3d.save_model(model, model_path, 'model.pt')
+    else:  
+      tr_tar_dl =  DataLoader(tr_tar, batch_size=config_3d.BATCH_SIZE, collate_fn=tr_tar.collate_fn, shuffle=True)
+      tr_src_dl = DataLoader(tr_src, batch_size=config_3d.BATCH_SIZE, shuffle=True)
+      tr_tar = tr_tar_dl
+      tr_src = tr_src_dl
+      run_model(model,tr_src, tr_tar, config_3d.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
+      io_3d.save_model(model, model_path, 'model.pt')
     

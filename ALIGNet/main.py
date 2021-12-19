@@ -142,10 +142,10 @@ if __name__ == '__main__':
     #parallize the model on multiple devices if possible
     if config.NUM_GPU > 0:
       #param that defines whether we are going to use distributed model
-      parallel=True
       print(f"Training on {config.NUM_GPU} devices")
-    tr, val = load_data.load_ds(config.DATA_PATH)
-    train_model(tr, val, model, parallel=parallel)
+    tr = torch.load(config.DATA_PATH + 'tr'+ '.pt')
+    val = torch.load(config.DATA_PATH + 'val'+ '.pt')
+    train_model(tr, val, model)
     
     
 
@@ -176,7 +176,6 @@ if __name__ == '__main__':
       print(f"Training on {config.NUM_GPU} devices")
     tr = torch.load(config.DATA_PATH + 'tr'+ '.pt')
     val = torch.load(config.DATA_PATH + 'val'+ '.pt')
-
     train_model(tr, val, model)
     
   if args.command == 'valid':

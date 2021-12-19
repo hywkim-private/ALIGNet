@@ -8,6 +8,8 @@ def initialize_config():
     global USE_CUDA
     global DEVICE
     global CPU
+    #number of GPUS to use => if not otherwise specified by init_config.yaml, use all the available gpus
+    global NUM_GPU
     #parameters for train config 
     global EPOCHS 
     global STEP
@@ -67,5 +69,6 @@ def initialize_config():
     USE_CUDA = torch.cuda.is_available()
     DEVICE = torch.device("cuda" if USE_CUDA else "cpu")
     CPU = torch.device('cpu')
-    
+    NUM_GPU = torch.cuda.device_count()
+
    

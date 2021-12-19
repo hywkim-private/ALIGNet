@@ -90,8 +90,7 @@ class Expand(Dataset):
 #given source and target img dataset, return a dict of augmented datasets
 #if val_set is set to True, the loader returns one element, not two
 class Augment(Dataset):
-  def __init__(self, tar_img, batch_size, im_size, val_set=False, augment_times=0, transform=False, random_mask=False, transform_no = 1, device=None):
-    self.device = device
+  def __init__(self, tar_img, batch_size, im_size, val_set=False, augment_times=0, transform=False, random_mask=False, transform_no = 1):
     self.val_set = val_set
     self.transform = transform
     self.random_mask = random_mask
@@ -249,10 +248,10 @@ def get_datasets(path, train_size, val_size):
 
 
 #given train, valid, and test sets, augment data 
-def aug_datasets(dataset, split_proportion, batch_size, grid_size, augment_times, mask_size, val_set=False, device=None):
+def aug_datasets(dataset, split_proportion, batch_size, grid_size, augment_times, mask_size, val_set=False):
   data_size = len(dataset)
   tar, src = random_split(dataset, [int(data_size*split_proportion), data_size - int(data_size*split_proportion)])
-  tar_aug = Augment(tar, batch_size, 128, augment_times = augment_times, transform = True, random_mask = True, transform_no =2, val_set=val_set, device=device)
+  tar_aug = Augment(tar, batch_size, 128, augment_times = augment_times, transform = True, random_mask = True, transform_no =2, val_set=val_set)
   src_aug = Expand(src, len(tar_aug))
   return tar_aug, src_aug
 

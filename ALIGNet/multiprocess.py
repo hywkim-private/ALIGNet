@@ -33,7 +33,7 @@ def cleanup():
 
 #run the model inmultiple gpus
 #data_loader can either be a single data_loader or a iterable list of data loaders (if so, source loader should also be a list of data loaders)
-def run_epoch(rank, model, optimizer,  source_loader, data_loader, grid_size, image_size, device):
+def run_epoch(rank, model, optimizer,  source_loader, data_loader, grid_size, image_size):
   #raise error if input types dont match
   if not type(data_loader) == type(source_loader):
     print('ERROR: data_laoder and source_loader must be of the same dtype')
@@ -74,7 +74,7 @@ def run_epoch(rank, model, optimizer,  source_loader, data_loader, grid_size, im
     time_avg = sum(time_) / k
   return loss_list
 
-def run_process(rank, world_size, model,source_set, target_set, epochs, batch_size, grid_size, image_size, device, shuffle=False, result_checker=None, graph_loss=False):
+def run_process(rank, world_size, model,source_set, target_set, epochs, batch_size, grid_size, image_size, shuffle=False, result_checker=None, graph_loss=False):
   setup(rank, world_size)
   model = model.to(rank)
   #wrap the model with DDP module 
@@ -87,7 +87,7 @@ def run_process(rank, world_size, model,source_set, target_set, epochs, batch_si
   for i in range(epochs):
     target_loader.sampler.set_epoch(i)
     source_loader.sampler.set_epoch(i)
-    loss_list = run_epoch(rank, model, optimizer, source_loader, target_loader, grid_size, image_size, device)
+    loss_list = run_epoch(rank, model, optimizer, source_loader, target_loader, grid_size, image_size)
     #set a barrier before updating resulting checker => and hence before saving the model
     #dist.barrier()
     #update only on process 0
@@ -105,10 +105,10 @@ def run_process(rank, world_size, model,source_set, target_set, epochs, batch_si
   cleanup()
 
 
-def run_parallel(world_size, model, source_loader, target_loader, epochs, batch_size, grid_size, image_size, device, shuffle=False, result_checker=None, graph_loss=False):
+def run_parallel(world_size, model, source_loader, target_loader, epochs, batch_size, grid_size, image_size, shuffle=False, result_checker=None, graph_loss=False):
   torch.multiprocessing.spawn(
     run_process,
-    (world_size, model, source_loader, target_loader, epochs, batch_size, grid_size, image_size, device,shuffle, result_checker, graph_loss), 
+    (world_size, model, source_loader, target_loader, epochs, batch_size, grid_size, image_size, shuffle, result_checker, graph_loss), 
     nprocs=world_size,
     join=True,
     )
