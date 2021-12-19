@@ -1,5 +1,6 @@
 import numpy as np
 from torch.utils.data import random_split, DataLoader, Subset, ConcatDataset
+from torch.utils.data.distributed import DistributedSampler
 from . import convert_type_3d as conv
 #Logic for preserving the voxel representation
 #We only need to preserve voxel representations for when the data set is a valid and source dataaset
@@ -134,6 +135,19 @@ def get_dataloader(ds, batch_size, augment=False, shuffle=False):
 
   return dl
   
+#given dataset, return an appropriate distributed dataloader
+def get_dataloader_parallel(ds, batch_size, shuffle=False):
+  #define the sampler for splitting datasets
+  sampler = DistributedSampler(ds,
+                               shuffle=shuffle, 
+                               seed=42)
+  data_loader = DataLoader(ds,
+                          batch_size=batch_size,
+                          shuffle=False,  
+                          sampler=sampler,
+                          pin_memory=True)
+  return data_loader
+
 #the param get_mesh specifies whether or not to get the original mesh representation of the src dataset
 def get_val_dl_3d(val, split_proportion, batch_size, vox_size, augment_times, mask_size, get_src_mesh=False, get_tar_pt=False):
   augment = False if augment_times <= 0 else True

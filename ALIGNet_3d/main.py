@@ -50,7 +50,6 @@ def get_ds(file_path, tr_size, val_size, total_num, pt_sample):
 #common code snippet--run the train iteration loop
 def train_model(tr, val, model_path):
   #save the iter variable as default or specified by the user
- 
   iter_t = config_3d.ITER
   #make an overfit check if specified by config 
   result_check = None 

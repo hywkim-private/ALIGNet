@@ -34,14 +34,13 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
     for k in range(len(tar_loader)-1):
       aug_batch, tar_batch = next(tar_iter)
       src_batch = next(src_iter)
-      aug_batch = torch.tensor(aug_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config.DEVICE)
-      tar_batch = torch.tensor(tar_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config.DEVICE)
-      src_batch = torch.tensor(src_batch, dtype=torch.float32, requires_grad=True).squeeze(dim=1).to(config.DEVICE)
+      aug_batch = aug_batch.squeeze(dim=1).to(config.DEVICE)
+      tar_batch = tar_batch.squeeze(dim=1).to(config.DEVICE)
+      src_batch = src_batch.squeeze(dim=1).to(config.DEVICE)
       input_image = torch.stack([src_batch, aug_batch])
       input_image  = input_image.permute([1,0,2,3])
       #run the network
-      diff_grid = model.forward(input_image)
-      tar_est = model.warp(diff_grid, src_batch)
+      tar_est, diff_grid = model.forward(input_image, src_batch)
       tar_est = tar_est.squeeze(dim=1)
       loss = get_loss(tar_batch, tar_est, config.GRID_SIZE, diff_grid, config.IMAGE_SIZE, config.DEVICE)
       loss.backward()
@@ -52,6 +51,7 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
 
 def run_model(model,source_loader, target_loader, grid_size, result_checker=None, graph_loss=False):
   optimizer = optim.Adam(model.parameters(), lr=1e-3)
+  model = model.to(config.DEVICE)
   epoch_loss = []
   for i in range(config.EPOCHS):
     loss_list = run_epoch(model, optimizer, source_loader, target_loader, grid_size)

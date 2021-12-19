@@ -2,13 +2,17 @@
 #this file works as a reference for initial confihurations
 #whenever a new model or dataset is initialized, its configuration file is created in accordance to this file
 
-
+#configurations for settings related to cpu, gpu, parallel training
+setting:
+ #specify the number of gpus to use for traning
+ #if nan is given, we will make use of all the possible gpus
+ num_gpu: null
 
 #configurations for initializing new datasets
 #NO EFFECT IF NOT INITIALIZING A NEW DATASET
 data:
  #name of the data type
- data_type: nan
+ data_type: null
  #proportion of target data to split from train dataset
  target_proportion: 0.5
  #proportion of target data to split from validation dataset
@@ -60,7 +64,7 @@ train:
  #weight applied to gradient in each training step 
  step: 1.0e-5
  #size of a single batch
- batch_size: 20
+ batch_size: 400
  #number of epochs to run in a single iteration
  epochs: 50
  #number of iterations to run 
@@ -71,7 +75,7 @@ train:
   - 10
   - 15
  #how many times to augment the train target dataset 
- augment_times_tr: 3
+ augment_times_tr: 50
  #how many times to augment the validation target dataset
  augment_times_val: 1
  #whether we are running checks for validation steps 

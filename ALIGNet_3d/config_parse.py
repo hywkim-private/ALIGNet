@@ -9,6 +9,13 @@ def load_config(config_path):
     with open(config_path, 'r') as file:
         config = yaml.full_load(file)
     return config
+    
+#render the parallel data loading capabilities    
+def render_settings(config):
+    #if num gpu is None, we will not specify 
+    if config['setting']['num_gpu'] is None:
+        return
+    cfg.NUM_GPU = config['setting']['num_gpu']
 
 #render the model-specific configurations in the config_3d.py file
 def render_model_config(config):

@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import augment
 from torch.utils.data import Dataset, DataLoader, TensorDataset, random_split, Subset
+from torch.utils.data.distributed import DistributedSampler
 from torchvision.transforms import ToTensor
 import torchvision
 from zipfile import ZipFile
@@ -104,12 +105,15 @@ class Augment(Dataset):
         tar_list.append(tar_img)
       self.tar_list = torch.utils.data.ConcatDataset(tar_list)
       self.aug_list = torch.utils.data.ConcatDataset(tar_list)
+      
     #if augment_times is 1
     else:
       self.tar_list = tar_img
       self.aug_list = tar_img
     self.im_size = im_size
 
+
+    
   def __getitem__(self, index):
     #return augmented list when val_set is set to true
     if self.val_set:
@@ -152,6 +156,9 @@ class Augment(Dataset):
           batch = self.deform(batch)
         elif self.random_mask:
           batch = self.mask(batch)
+        batch = torch.tensor(batch, dtype=torch.float32, requires_grad=True)
+      if self.device:
+        batch = batch.to(self.device)
       return batch
     aug_batch, tar_batch = zip(*batch)
     aug_batch = np.concatenate(list(aug_batch))
@@ -167,6 +174,11 @@ class Augment(Dataset):
         tar_batch = aug_batch.copy()
       elif self.random_mask:
         aug_batch = self.mask(aug_batch) 
+      aug_batch = torch.tensor(aug_batch, dtype=torch.float32, requires_grad=True)
+      tar_batch = torch.tensor(tar_batch, dtype=torch.float32, requires_grad=True)
+    if self.device:
+      aug_batch = aug_batch.to(self.device)
+      tar_batch = tar_batch.to(self.device)
     return aug_batch, tar_batch
 
 #helper function for the class pre_augment
@@ -251,6 +263,20 @@ def get_dataloader(ds, batch_size, augment=False, shuffle=False):
   else:
     dl = DataLoader(ds, batch_size=batch_size, shuffle=SHUFFLE)  
   return dl
+  
+#given dataset, return an appropriate distributed dataloader
+def get_dataloader_parallel(ds, batch_size, shuffle=False):
+  #define the sampler for splitting datasets
+  sampler = DistributedSampler(ds,
+                               shuffle=shuffle, 
+                               seed=42)
+  data_loader = DataLoader(ds,
+                          batch_size=batch_size,
+                          shuffle=False,  
+                          sampler=sampler,
+                          pin_memory=True)
+  return data_loader
+
 
 def get_val_dl(val, split_proportion, batch_size, grid_size, augment_times, mask_size):
   tar, src = aug_datasets(val, split_proportion, batch_size, grid_size, augment_times, mask_size, val_set=True)
@@ -260,3 +286,4 @@ def get_val_dl(val, split_proportion, batch_size, grid_size, augment_times, mask
   val_tar_ds  = pre_augment(val_tar_dl, batch_size=batch_size, val_set=True, shuffle=True)
   val_tar_dl = DataLoader(val_tar_ds, batch_size, shuffle=True)
   return val_tar_dl, val_src_dl
+  
