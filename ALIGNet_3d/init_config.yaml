@@ -98,7 +98,7 @@ valid:
   - 15
  visualize:
   #number of  samples to visualize from a batch
-  num_sample: 10
+  num_sample: 2
   #the type of visualizations
   #custom: visualize as presented in the paper
   #voxel: visualize the voxel representation of valid results

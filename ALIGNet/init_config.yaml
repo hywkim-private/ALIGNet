@@ -87,14 +87,14 @@ train:
 #only has effect in valid mode
 valid:
  #path of the path to use foir validation 
- model_path: ./obj/model_1/
+ model_path: ./obj/model_65/
  #how many times to augment the validation dataset 
  augment_times_val: 1
  #size of a single batch
- batch_size: 20
+ batch_size: 3
  #the range of mask size to apply to target datasets
  mask_size:
   - 10
   - 15
- #number of  samples to visualize from a batch
- num_sample: 10
+ #number of  samples to on validation on => set nan to run for the entire val set
+ num_sample: 2

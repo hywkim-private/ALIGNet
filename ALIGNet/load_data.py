@@ -112,8 +112,6 @@ class Augment(Dataset):
       self.aug_list = tar_img
     self.im_size = im_size
 
-
-    
   def __getitem__(self, index):
     #return augmented list when val_set is set to true
     if self.val_set:

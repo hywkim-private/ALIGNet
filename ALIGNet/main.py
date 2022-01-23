@@ -10,6 +10,9 @@ import torch
 import torch.nn as nn
 import config_parse
 
+#TODO: NORMALIZE LOSS FUNCTION SO THEYARE EQUAL ALONG DIFFERENT BATCHSIZE
+
+
 #given a string of datatype, return its appropriate index
 def get_data_idx(datatype_str):
   dtype = 0

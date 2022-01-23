@@ -90,6 +90,7 @@ class result_checker_3d():
     self.avg_loss = 0
     self.updated = False
     self.mesh = False
+    
 
   #run the validate function and update the tr_val_gap parameter
   #include a train loss if youre validating for a training loop
@@ -106,7 +107,6 @@ class result_checker_3d():
     self.src_mesh_ori = None
     if get_src_mesh: 
       src_mesh_ori_list = []
-      #TODO:UPGRADE THIS FUNCTIONALITY USING THE MESH.CONCAT FUNCTION(?)
       #we need "list of verts and faces" to create Mesh object that stores all the meshes we have
       for mesh in self.src_mesh_list:
         #make src_mesh_list to a Mesh datatype
@@ -191,7 +191,6 @@ class result_checker_3d():
       self.est_mesh.append(ops.cubify(self.est_list[i], 1))
     self.mesh = True
 
-
   def get_pointcloud_from_mesh(self, num_samples):
     if self.mesh == False:
       #call get_mesh if it hasn't been called
@@ -204,16 +203,15 @@ class result_checker_3d():
       self.src_pt.append(conv.PointCloud(self.src_mesh[i], num_samples, config_3d.DEVICE))
       self.est_pt.append(conv.PointCloud(self.est_mesh[i], num_samples, config_3d.DEVICE))
 
-
   #visualize the results in images 
   #batch_index specifies which batch to visualize
   #datatype : 0-voxel, 1-src(mesh)-tar(pointclud)-tar_est(mesh)
-  def visualize(self, datatype=0, batch_index=0, sample=None, save_path=None):
+  def visualize(self, datatype=0, batch_index=0, save_path=None):
     if datatype == 0:
-      visualize_results_3d(self.src_list, self.tar_list, self.est_list, self.def_grid_list, datatype, batch_index, sample, save_path)
+      visualize_results_3d(self.src_list, self.tar_list, self.est_list, self.def_grid_list, datatype, batch_index, save_path)
     elif datatype == 1: 
       #FOR NOW WE WILL MANUALLY SET DATATYPE=> TODO:SYNCHRONIZE THE NAMING OF DATATYPES
-      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, self.for_grid_list, 3, batch_index, sample, save_path)
+      visualize_results_3d(self.src_mesh_ori, self.tar_pt_ori, self.deformed_mesh, self.for_grid_list, 3, batch_index, save_path)
 
 
   #update the loss value after running the model
@@ -230,7 +228,6 @@ class result_checker_3d():
     if save_path:
       plt.savefig(etc.latest_filename(save_path),format='png')
     plt.close()
-    
 
   #given source and target validation  dataloaders, perform all validation operations
   #save_img is the path to save the img
@@ -260,6 +257,7 @@ class result_checker_3d():
       for_grid_batch = np.stack(for_grid_list)
       return tar_est, diff_grid, def_grid, for_grid_batch, loss
     return tar_est, diff_grid, def_grid, loss
+    
     
   #run loop for the dataloaders to run the validate() operation
   #if get_mesh param is set to true, also return the mesh representation of src dataset (returns 7 results instead of 6 )
@@ -305,7 +303,7 @@ class result_checker_3d():
       target = torch.FloatTensor(target).squeeze(dim=1).to(config_3d.DEVICE)
       source = torch.FloatTensor(source).squeeze(dim=1).to(config_3d.DEVICE)
       if get_for_grid:
-        tar_est, diff_grid, def_grid, for_grid, loss = self.validate_3d(model, source, target, grid_size,get_for_grid=get_for_grid)
+        tar_est, diff_grid, def_grid, for_grid, loss = self.validate_3d(model, source, target, grid_size ,get_for_grid=get_for_grid)
         for_grid_list.append(for_grid)
       else: 
         tar_est, diff_grid, def_grid, loss = self.validate_3d(model, source, target, grid_size)

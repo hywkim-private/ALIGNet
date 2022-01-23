@@ -330,8 +330,3 @@ class pre_augment(Dataset):
       return self.aug_ds[index]
     else: 
       return self.aug_ds[index], self.tar_ds[index]
-
-
-
-
-
