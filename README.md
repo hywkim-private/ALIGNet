@@ -1,4 +1,6 @@
 # ALIGNet
+![Pytorch](https://img.shields.io/badge/PyTorch->=1.9.0-Red?logo=pytorch)
+![Python](https://img.shields.io/badge/Python->=3.8-Red?logo=python)
 A pytorch implementation of ALIGNet, originally developed by Prof. Rana Hanocka.
 
 ALIGNet is a partial-shape agnostic deep-learning model that "aligns" source images to randomly-masked target images as shown below. 
@@ -14,7 +16,11 @@ move to the ALIGNet or ALIGNet_3d directory.
 ```cd ALIGNet```
 or
 ```cd ALIGNet_3d```
-install dependencies by running pip -r requirements.txt
+install dependencies by running, 
+```
+conda env create --file alignet.yml
+conda activate alignet
+```
 
 ## Download data
 -Define the url to get data in init_config => data => url_data (or use the predefined url in the default init_config).
