@@ -38,7 +38,7 @@ def validate(model, source_image, target_image, grid_size, image_size, checker_b
   tar_est, diff_grid = model.forward(input_image, source_image)
   tar_est = tar_est.squeeze(dim=1)
   #calculate the loss for the image
-  loss = get_loss(target_image, tar_est, grid_size,  diff_grid, image_size, config.DEVICE)
+  loss = get_loss(target_image, tar_est, grid_size,  diff_grid, image_size, config.LAMBDA,config.DEVICE)
   #apply checkerboard and run warp again if specified by checker_board
   if checker_board:
     source_ck = apply_checkerboard(source_image, 128)
@@ -63,7 +63,7 @@ def validate_dl(model, source_dl, target_dl, grid_size, image_size, checker_boar
     target_image = torch.FloatTensor(target_image).squeeze(dim=1).to(config.DEVICE)
     source_image = torch.FloatTensor(source_image).squeeze(dim=1).to(config.DEVICE)
     input_image = torch.stack([source_image, target_image])
-    input_image  = input_image.permute([1,0,2,3])
+    input_image  = input_image.permute([1,0,2,3]) 
     tar_est, diff_grid, loss = validate(model, source_image, target_image, grid_size, image_size, checker_board)
     if checker_board:
       target_image = apply_checkerboard(target_image, 128)
@@ -100,15 +100,14 @@ def visualize_results(source_image,  target_image, target_estimate, save_path=No
   fig, ax = plt.subplots(batch, 3, figsize=(20,20))
   for i in range(batch):
     #ax[i,0].set_title('source_image')
-    ax[i,0].imshow(source_image[i], cmap='gray')
+    ax[i,0].imshow(source_image[i].transpose([1,0]), cmap='gray')
     #ax[i,1].set_title('target_image')
-    ax[i,1].imshow(target_image[i], cmap='gray')
+    ax[i,1].imshow(target_image[i].transpose([1,0]), cmap='gray')
     #ax[i,2].set_title('target_estimate')
-    ax[i,2].imshow(target_estimate[i], cmap='gray')
+    ax[i,2].imshow(target_estimate[i].transpose([1,0]), cmap='gray')
   if save_path:
     plt.savefig(save_path, format='png')
   return
-
 
 
 #this class stores necessary in order to check and validate results of the model
@@ -157,6 +156,8 @@ class result_checker():
     if save_path:
       plt.savefig(etc.latest_filename(save_path),format='png')
     plt.close()
+    
+
     
 
     

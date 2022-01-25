@@ -59,6 +59,7 @@ def render_train_config(config):
     cfg.MODEL_PATH = config['train']['model_path']
     cfg.RESULT_CHECK = config['train']['result_check']
     cfg.GRAPH_LOSS = config['train']['graph_loss']
+    cfg.TRANSFORM_NO = config['train']['transform_no']
 
     
 def render_data_config(config):
@@ -83,6 +84,8 @@ def write_data_config(config, data_path):
 def render_valid_config(config):
     cfg.MODEL_PATH = config['valid']['model_path']
     cfg.AUGMENT_TIMES_VAL = config['valid']['augment_times_val']
-    cfg.NUM_SAMPLE = config['valid']['num_sample']
+    cfg.VAL_SAMPLE = config['valid']['num_sample']
     cfg.BATCH_SIZE = config['valid']['batch_size']
     cfg.MASK_SIZE = tuple(config['valid']['mask_size'])
+    cfg.TRANSFORM_NO = config['valid']['transform_no']
+    cfg.CHECKERBOARD = config['valid']['checkerboard']

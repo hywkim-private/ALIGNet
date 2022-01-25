@@ -47,19 +47,16 @@ def initialize_config():
     global LEARN_OFFSET
     global DATA_TYPE
     global DATA_PATH
-    
-    
     #Specify the download url
     global URL_DATA
-
-    
     #define parameters for the training loop
     global GRAPH_LOSS
     global RESULT_CHECK
-    
-
     #path to initial yaml config file
     global CONFIG_PATH
+    global TRANSFORM_NO
+    global CHECKERBOARD
+    global VAL_SAMPLE
 
     #define hyper parameters 
     USE_CUDA = torch.cuda.is_available()

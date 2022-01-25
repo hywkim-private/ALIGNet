@@ -5,7 +5,6 @@ import numpy as np
 from pytorch3d.structures import Pointclouds
 
 
-#TODO: SPLIT THIS FUNCTION IN TWO => FOR PT AND VOXEL
 #return target image as masked by random size and locations
 #mask_size can either be integer or tuple, specifying the range of random mask sizes 
 #data: can either be Voxel datatype or tuple (Voxel, Pointcloud) 

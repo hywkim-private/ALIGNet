@@ -39,7 +39,7 @@ data:
 #NO EFFECT IF NOT INITIALIZING A NEW MODEL 
 model:
  #the path where model is saved
- model_path: ./obj/model_1/
+ model_path: ./obj/model_7/
  #index of the model to use: a variety of models are defined in model/conv
  model_idx: 2
  #the size of the grid output by the network (before upsampling is applied)
@@ -49,7 +49,7 @@ model:
  #maximum number of features to learn in the network => defines complexity of the model
  maxfeat: 64
  #the weight value to apply to the L_TV_Loss
- lambda: 1.0e-4
+ lambda: 5.0e-4
  #setting this parameter will parameterize offset values, enabling the model to learn them 
  learn_offset: true
  #path of the data to use
@@ -60,22 +60,25 @@ model:
 #has effect in all modes 
 train:
  #path of the model to train
- model_path: ./obj/model_1/
+ model_path: ./obj/model_7/
  #weight applied to gradient in each training step 
  step: 1.0e-5
- #size of a single batch
- batch_size: 2000
+ #size of a single batchSS
+ batch_size: 20
  #number of epochs to run in a single iteration
- epochs: 100
+ epochs: 50
  #number of iterations to run 
- iter: 500
+ iter: 150
+ #index value for the kind of transformation (augmentation) to apply to the target dataset
+ #null will not apply any transformation
+ transform_no: null
  #range of mask size to apply in augmenting target
  #must be smaller than vox_size
  mask_size:
   - 40
   - 60
  #how many times to augment the train target dataset 
- augment_times_tr: 300
+ augment_times_tr: 5
  #how many times to augment the validation target dataset
  augment_times_val: 1
  #whether we are running checks for validation steps 
@@ -87,14 +90,19 @@ train:
 #only has effect in valid mode
 valid:
  #path of the path to use foir validation 
- model_path: ./obj/model_1/
+ model_path: ./obj/model_7/
  #how many times to augment the validation dataset 
  augment_times_val: 1
+ #index value for the kind of transformation (augmentation) to apply to the target datatset
+ #null will not apply any transformation
+ transform_no: null
  #size of a single batch
- batch_size: 20
+ batch_size: 10
  #the range of mask size to apply to target datasets
  mask_size:
-  - 10
-  - 15
- #number of  samples to visualize from a batch
- num_sample: 10
+  - 40
+  - 60
+ #number of  samples to on validation on =>S set nan to run for the entire val set
+ num_sample: 2
+ #whether or not we will lay checkerboard over image results
+ checkerboard: False

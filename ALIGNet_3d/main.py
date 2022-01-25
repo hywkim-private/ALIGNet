@@ -230,11 +230,11 @@ if __name__ == '__main__':
       print("This function is deprecated and is no longer supported => aborting..")
       exit()
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, val_sample= config_3d.NUM_SAMPLE, )
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
       result_checker.get_pointcloud_from_mesh(config_3d.PT_SAMPLE)
-      result_checker.visualize(datatype=2, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+      result_checker.visualize(datatype=2, save_path=image_path)
       
     #visualize mesh
     #DEPRECATED
@@ -243,31 +243,30 @@ if __name__ == '__main__':
       exit()
       #for mesh visualization, we need to set get_mesh=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE,get_src_mesh=True, get_tar_pt=False)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, val_sample= config_3d.NUM_SAMPLE, get_src_mesh=True, get_tar_pt=False)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_mesh=True)
       result_checker.warp_mesh()
       result_checker.get_mesh_from_vox()
-      result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+      result_checker.visualize(datatype=1, save_path=image_path)
       
-    #a custom visualization routine designed for research purposes 
+    #a custom visualization routine designed for research purposes
     elif config_3d.VISUALIZE_TYPE == 'custom':
       #for mesh visualization, we need to set get_mesh=True, get_for_grid=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, get_src_mesh=True, get_tar_pt=True)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, val_sample= config_3d.NUM_SAMPLE, get_src_mesh=True, get_tar_pt=True)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_src_mesh=True, get_tar_pt = True, get_for_grid=True)
       result_checker.warp_mesh()
-      result_checker.visualize(datatype=1, sample=config_3d.NUM_SAMPLE, save_path=image_path)
-    #default: voxel visualization
+      result_checker.visualize(datatype=1, save_path=image_path)
     else:
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
           val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
-      result_checker.visualize(datatype=0, sample=config_3d.NUM_SAMPLE, save_path=image_path)
+      result_checker.visualize(datatype=0, save_path=image_path)
  
     
       

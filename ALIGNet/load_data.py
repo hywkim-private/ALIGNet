@@ -90,14 +90,16 @@ class Expand(Dataset):
 #given source and target img dataset, return a dict of augmented datasets
 #if val_set is set to True, the loader returns one element, not two
 class Augment(Dataset):
-  def __init__(self, tar_img, batch_size, im_size, val_set=False, augment_times=0, transform=False, random_mask=False, transform_no = 1):
+  def __init__(self, tar_img, batch_size, im_size, val_set=False, augment_times=0, random_mask=False, transform_no = 0):
     self.val_set = val_set
-    self.transform = transform
     self.random_mask = random_mask
     self.batch_size = batch_size
-    self.aug = augment.random_augmentation(transform_no)
+    self.augment = True if augment_times>0 else False
+    self.tranformation_f = augment.random_augmentation(transform_no)
     self.augment_times = augment_times
-    self.augment = False if augment_times==0 else True 
+    #do not augment if transform_no is 0
+    if transform_no == None: 
+      self.transform = False
     #first augment the original tar_list to match the returning batch size, then perform augmentation
     if not augment_times == 0:
       tar_list = []
@@ -112,8 +114,6 @@ class Augment(Dataset):
       self.aug_list = tar_img
     self.im_size = im_size
 
-
-    
   def __getitem__(self, index):
     #return augmented list when val_set is set to true
     if self.val_set:
@@ -130,8 +130,7 @@ class Augment(Dataset):
   #perform the deformation operation on batch of images
   #input shape: batchx NxWxH
   def deform(self, aug_batch):
-    if not (self.augment_times == None):
-      aug_im = self.aug.augment_images(images=aug_batch)
+    aug_im = self.transformation_f.augment_images(images=aug_batch)
     return aug_im
 
   #perform the mask operation on a batch 
@@ -139,15 +138,14 @@ class Augment(Dataset):
   #input shape: batchx NxWxH
   def mask(self, aug_batch):
     tar_batch = aug_batch
-    if not (self.random_mask == None):
-      aug_im = augment.random_mask_2d(aug_batch, self.im_size, (50, 80), square=True)
+    aug_im = augment.random_mask_2d(aug_batch, self.im_size, (50, 80), square=True)
     return aug_im
       
 
   def collate_fn(self, batch):
     #if val_set, the batch will be a single augmented batch
     if self.val_set:
-      if self.aug:
+      if self.augment:
         batch = np.concatenate([*batch])
         if self.transform and self.random_mask:
           batch = self.deform(batch)
@@ -157,13 +155,11 @@ class Augment(Dataset):
         elif self.random_mask:
           batch = self.mask(batch)
         batch = torch.tensor(batch, dtype=torch.float32, requires_grad=True)
-      if self.device:
-        batch = batch.to(self.device)
       return batch
     aug_batch, tar_batch = zip(*batch)
     aug_batch = np.concatenate(list(aug_batch))
     tar_batch = np.concatenate(list(tar_batch))
-    if self.aug:
+    if self.augment:
       #the batch will be a batchx2xNxWxH)
       if self.transform and self.random_mask:
         aug_batch = self.deform(aug_batch)
@@ -173,12 +169,9 @@ class Augment(Dataset):
         aug_batch = self.deform(aug_batch)
         tar_batch = aug_batch.copy()
       elif self.random_mask:
-        aug_batch = self.mask(aug_batch) 
+        aug_batch = self.mask(aug_batch)
       aug_batch = torch.tensor(aug_batch, dtype=torch.float32, requires_grad=True)
       tar_batch = torch.tensor(tar_batch, dtype=torch.float32, requires_grad=True)
-    if self.device:
-      aug_batch = aug_batch.to(self.device)
-      tar_batch = tar_batch.to(self.device)
     return aug_batch, tar_batch
 
 #helper function for the class pre_augment
@@ -248,12 +241,21 @@ def get_datasets(path, train_size, val_size):
 
 
 #given train, valid, and test sets, augment data 
-def aug_datasets(dataset, split_proportion, batch_size, grid_size, augment_times, mask_size, val_set=False):
+def aug_datasets(dataset, split_proportion, batch_size, grid_size, augment_times, mask_size, val_sample, transform_no=None, val_set=False):
   data_size = len(dataset)
-  tar, src = random_split(dataset, [int(data_size*split_proportion), data_size - int(data_size*split_proportion)])
-  tar_aug = Augment(tar, batch_size, 128, augment_times = augment_times, transform = True, random_mask = True, transform_no =2, val_set=val_set)
+  #return error if val sample is larger than either tar or src datase
+  if val_sample:
+    if int(data_size*split_proportion) < val_sample or data_size - int(data_size*split_proportion) < val_sample:
+      print(f"aug_dataset: ERROR val_Sample can't be larger than target or source dataset")
+      exit()
+    else: 
+      tar, src, _ = random_split(dataset, [val_sample, val_sample, data_size-(val_sample*2)])
+  else:
+    tar, src = random_split(dataset, [int(data_size*split_proportion), data_size - int(data_size*split_proportion)])
+  tar_aug = Augment(tar, batch_size, 128, augment_times = augment_times, random_mask = True, transform_no =transform_no, val_set=val_set)
   src_aug = Expand(src, len(tar_aug))
   return tar_aug, src_aug
+  
 
 #given dataset, return the appropriate dataloader
 def get_dataloader(ds, batch_size, augment=False, shuffle=False):
@@ -278,8 +280,8 @@ def get_dataloader_parallel(ds, batch_size, shuffle=False):
   return data_loader
 
 
-def get_val_dl(val, split_proportion, batch_size, grid_size, augment_times, mask_size):
-  tar, src = aug_datasets(val, split_proportion, batch_size, grid_size, augment_times, mask_size, val_set=True)
+def get_val_dl(val, split_proportion, batch_size, grid_size, augment_times, mask_size, val_sample, transform_no):
+  tar, src = aug_datasets(val, split_proportion, batch_size, grid_size, augment_times, mask_size, val_sample, transform_no=transform_no, val_set=True)
   val_tar_dl = get_dataloader(tar, batch_size, augment=True, shuffle=True)
   val_src_dl = get_dataloader(src, batch_size, shuffle=True)
   #pre augment the data by loading them before execution
