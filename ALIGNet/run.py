@@ -42,7 +42,7 @@ def run_epoch(model, optimizer,  source_loader, data_loader, grid_size):
       #run the network
       tar_est, diff_grid = model.forward(input_image, src_batch)
       tar_est = tar_est.squeeze(dim=1)
-      loss = get_loss(tar_batch, tar_est, config.GRID_SIZE, diff_grid, config.IMAGE_SIZE, config.DEVICE)
+      loss = get_loss(tar_batch, tar_est, config.GRID_SIZE, diff_grid, config.IMAGE_SIZE, config.LAMBDA, config.DEVICE)
       loss.backward()
       optimizer.step()
       optimizer.zero_grad()

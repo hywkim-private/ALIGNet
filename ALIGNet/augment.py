@@ -184,6 +184,7 @@ def random_augmentation(transform_no = 1):
   #define the transforamtion pipline 
   sometimes = lambda aug: iaa.Sometimes(0.5, aug)
   sometimes_more = lambda aug: iaa.Sometimes(0.8, aug)
+
   if transform_no == 1:
     transform = iaa.Sequential (
     [

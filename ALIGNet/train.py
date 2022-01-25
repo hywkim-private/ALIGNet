@@ -14,9 +14,9 @@ from torch.utils.data import Dataset, DataLoader, TensorDataset
 #train_mode = 0: only trains on original images
 #train_mode = 1: only trains on augmented images
 #train_mode = 2: trains both on original and augmented images
-def train(model, iter, tr, split_proportion, batch_size, grid_size, augment_times, mask_size, result_checker=None, graph_loss=False):
+def train(model, iter, tr, split_proportion, batch_size, grid_size, augment_times, mask_size, transform_no, result_checker=None, graph_loss=False):
   for i in range(iter):
-    tr_tar, tr_src = load_data.aug_datasets(tr, split_proportion, batch_size, grid_size, augment_times, mask_size)
+    tr_tar, tr_src = load_data.aug_datasets(tr, split_proportion, batch_size, grid_size, augment_times, mask_size, transform_no)
     #if number of gpus is greater than 0, run the training loop in parallel processes 
     #for run_parallel, we will not pass the dataloader but the augmented dataset in order to train from the distributed dataloader
     if config.NUM_GPU > 1:
@@ -28,4 +28,5 @@ def train(model, iter, tr, split_proportion, batch_size, grid_size, augment_time
       tr_tar  = load_data.pre_augment(tr_tar, batch_size=config.BATCH_SIZE, shuffle=True)
       tr_tar = load_data.DataLoader(tr_tar, config.BATCH_SIZE, shuffle=True)
       run.run_model(model, tr_src, tr_tar, config.GRID_SIZE, result_checker = result_checker, graph_loss=graph_loss)
+    torch.save(model, config.MODEL_PATH + 'model.pt')
     

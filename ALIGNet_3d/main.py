@@ -230,7 +230,7 @@ if __name__ == '__main__':
       print("This function is deprecated and is no longer supported => aborting..")
       exit()
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, val_sample= config_3d.NUM_SAMPLE, )
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       result_checker.update()
       result_checker.get_pointcloud_from_mesh(config_3d.PT_SAMPLE)
@@ -243,7 +243,7 @@ if __name__ == '__main__':
       exit()
       #for mesh visualization, we need to set get_mesh=True
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
-          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE,get_src_mesh=True, get_tar_pt=False)
+          val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, val_sample= config_3d.NUM_SAMPLE, get_src_mesh=True, get_tar_pt=False)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_mesh=True)
@@ -257,8 +257,6 @@ if __name__ == '__main__':
       val_tar_dl, val_src_dl = datasets.get_val_dl_3d(
           val, config_3d.TARGET_PROPORTION_VAL, config_3d.BATCH_SIZE, config_3d.VOX_SIZE, config_3d.AUGMENT_TIMES_VAL, config_3d.MASK_SIZE, val_sample= config_3d.NUM_SAMPLE, get_src_mesh=True, get_tar_pt=True)
       result_checker = validate_3d.result_checker_3d(model, val_tar_dl, val_src_dl)
-      print(len(val_tar_dl))
-      print(len(val_src_dl))
       #we will retrieve the original src mesh representation and apply deformation directly
       result_checker.update(get_src_mesh=True, get_tar_pt = True, get_for_grid=True)
       result_checker.warp_mesh()

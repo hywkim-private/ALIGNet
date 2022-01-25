@@ -7,6 +7,7 @@ def L2_Loss(target_image, warped_image, image_size):
   batch,_,_ = target_image.shape
   sum_check = torch.norm(target_image - warped_image, p=2)/batch
   sum_check = sum_check/(image_size*image_size)
+  sum_check = sum_check/batch
   L2_Loss = sum_check
   return L2_Loss
 
@@ -23,9 +24,9 @@ def L_TV_Loss(diff_grid, grid_size, lambda_, device):
   L_TV_Loss = L_TV_Loss * lambda_
   return L_TV_Loss
   
-def get_loss(tar_img, tar_est, grid_size, diff_grid, image_size, device):
+def get_loss(tar_img, tar_est, grid_size, diff_grid, image_size, lambda_, device):
   L2_Loss_ = L2_Loss(tar_img, tar_est, image_size)
-  L_TV_Loss_ = L_TV_Loss(diff_grid, grid_size, 1e-3, device)
+  L_TV_Loss_ = L_TV_Loss(diff_grid, grid_size, lambda_, device)
   loss = L_TV_Loss_ + L2_Loss_
   return loss
     

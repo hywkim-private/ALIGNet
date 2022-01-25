@@ -10,7 +10,9 @@ import torch
 import torch.nn as nn
 import config_parse
 
-#TODO: NORMALIZE LOSS FUNCTION SO THEYARE EQUAL ALONG DIFFERENT BATCHSIZE
+
+#TODO: FIX THE AUGMENTATION FUNCTIONS => CURRENTLY MASK AND AUGMENTATION OPERATIONS GO TOGETHER => MAKE SURE WE CAN HANDLE THEM SEPERATELY
+#CURRENT FIX: LOAD_DATA LINE 249 
 
 
 #given a string of datatype, return its appropriate index
@@ -19,8 +21,6 @@ def get_data_idx(datatype_str):
   if datatype_str == "plane":
     dtype = 0
   return dtype
-    
-
     
 def train_model(tr, val, model, parallel=False):
   #make an overfit check if specified by config 
@@ -34,11 +34,11 @@ def train_model(tr, val, model, parallel=False):
       result_check = load_obj(result_check_path)
     else:
       result_check = validate.result_checker(model, val_tar, val_src)
-  train_.train(model, config.ITER, tr, config.TARGET_PROPORTION, config.BATCH_SIZE, config.GRID_SIZE, config.AUGMENT_TIMES_TR, config.MASK_SIZE, result_checker=result_check, graph_loss=config.GRAPH_LOSS)
+  torch.save(model, config.MODEL_PATH + 'model.pt')
+  train_.train(model, config.ITER, tr, config.TARGET_PROPORTION, config.BATCH_SIZE, config.GRID_SIZE, config.AUGMENT_TIMES_TR, config.MASK_SIZE, config.TRANSFORM_NO, result_checker=result_check, graph_loss=config.GRAPH_LOSS)
   torch.save(model, config.MODEL_PATH + 'model.pt')
   if config.RESULT_CHECK:
     load_save.save_obj(result_check, result_check_path)
-
 
 
 if __name__ == '__main__':
@@ -193,7 +193,6 @@ if __name__ == '__main__':
     data_config = config_parse.load_config(config.DATA_PATH + 'data_cfg.yaml')
     config_parse.render_data_config(data_config)
     #--------------------------------------------------------------
-    
     #load the previous model
     model = torch.load(config.MODEL_PATH + 'model.pt', map_location=torch.device('cpu')).to(config.DEVICE)
     #load the target model configuartions 
@@ -204,8 +203,8 @@ if __name__ == '__main__':
     #load the neccessary datasets
     tr, val = load_data.load_ds(config.DATA_PATH)
     val_tar_dl, val_src_dl = load_data.get_val_dl(
-      val, config.TARGET_PROPORTION_VAL, config.BATCH_SIZE, config.GRID_SIZE, config.AUGMENT_TIMES_VAL, config.MASK_SIZE)
-    result_checker = validate.result_checker(model, val_tar_dl, val_src_dl, checker_board=True)
+      val, config.TARGET_PROPORTION_VAL, config.BATCH_SIZE, config.GRID_SIZE, config.AUGMENT_TIMES_VAL, config.MASK_SIZE, config.VAL_SAMPLE, config.TRANSFORM_NO)
+    result_checker = validate.result_checker(model, val_tar_dl, val_src_dl, checker_board=config.CHECKERBOARD)
     result_checker.update()
     result_checker.visualize(image_path)
       
