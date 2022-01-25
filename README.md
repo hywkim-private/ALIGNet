@@ -2,6 +2,8 @@
 A pytorch implementation of ALIGNet, originally developed by Prof. Rana Hanocka.
 
 ALIGNet is a partial-shape agnostic deep-learning model that "aligns" source images to randomly-masked target images as shown below. 
+[!3d](./docs/3d.png)
+
 The model learns both data-driven priors that predicts partially masked target shapes and warp deformation fields that transform source images to resemble the 
 features of the fully-recovered target shapes. 
 
