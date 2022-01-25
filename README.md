@@ -1,6 +1,7 @@
 # ALIGNet
 ![Pytorch](https://img.shields.io/badge/PyTorch->=1.9.0-Red?logo=pytorch)
 ![Python](https://img.shields.io/badge/Python->=3.8-Red?logo=python)
+
 A pytorch implementation of ALIGNet, originally developed by Prof. Rana Hanocka.
 
 ALIGNet is a partial-shape agnostic deep-learning model that "aligns" source images to randomly-masked target images as shown below. 
