@@ -8,7 +8,7 @@ ALIGNet is a partial-shape agnostic deep-learning model that "aligns" source ima
 It learns both data-driven priors that predicts partially masked target shapes and warp deformation fields that transform source images to resemble the 
 features of the fully-recovered target shapes. 
 <p align="center">
-  <img src="./docs/3d.png" width="1600" title="3d Example">
+  <img src="./docs/3d.png" width="2000" title="3d Example">
 </p>
 For example, given a source 3d mesh structure (left column) and a target point-cloud with missing datapoints (middle column), ALIGNet warps the source mesh into the target-estimate (right column), which, in plain terms, can be seen as a "mixture" of the two input shapes. 
 
